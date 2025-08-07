@@ -64,8 +64,8 @@ func initTelemetry(serviceName string) (*sdktrace.TracerProvider, error) {
 		sentryEnv = k8s.GetEnvironment()
 	}
 	if sentryEnv == "" {
-		slog.Warn("SENTRY_ENVIRONMENT not set, using default environment")
-		sentryEnv = "development"
+		slog.Warn("SENTRY_ENVIRONMENT environment variable is required")
+		return nil, fmt.Errorf("SENTRY_ENVIRONMENT environment variable is required")
 	}
 
 	sentryDsn := os.Getenv("SENTRY_DSN")
