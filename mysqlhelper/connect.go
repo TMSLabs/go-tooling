@@ -2,16 +2,28 @@
 package mysqlhelper
 
 import (
+	"fmt"
 	"log"
-	"os"
 
 	"github.com/jmoiron/sqlx"
+
+	_ "github.com/go-sql-driver/mysql" // MySQL driver
 )
 
-// CheckConnection checks if the MySQL database connection is healthy.
-func CheckConnection() error {
+// Connect establishes a connection to the MySQL database using the provided DSN (Data Source Name).
+func Connect(dsn string) (*sqlx.DB, error) {
+	db, err := sqlx.Connect("mysql", dsn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to MySQL: %w", err)
+	}
 
-	db, err := sqlx.Connect("mysql", os.Getenv("MYSQL"))
+	return db, nil
+}
+
+// CheckConnection checks if the MySQL database connection is healthy.
+func CheckConnection(dsn string) error {
+
+	db, err := Connect(dsn)
 	if err != nil {
 		return err
 	}
@@ -23,6 +35,6 @@ func CheckConnection() error {
 	if err := db.Ping(); err != nil {
 		return err
 	}
-	return nil
 
+	return nil
 }

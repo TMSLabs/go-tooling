@@ -7,9 +7,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/TMSLabs/go-tooling/k8s"
 	"github.com/getsentry/sentry-go"
-	"github.com/joho/godotenv"
+	"github.com/nats-io/nats.go"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -24,111 +23,138 @@ import (
 // OtelHandler re-exports otelhttp.NewHandler for convenience
 var OtelHandler = otelhttp.NewHandler
 
+// TelemetryConfig is the configuration for telemetry.
+var TelemetryConfig = config{}
+
 // initTelemetry initializes slog, OpenTelemetry, and Sentry.
 // Returns the TracerProvider for shutdown.
-func initTelemetry(serviceName string) (*sdktrace.TracerProvider, error) {
+func initTelemetry(serviceName string, opts ...Option) (*sdktrace.TracerProvider, error) {
 
-	// load .env vars if available
-	if err := godotenv.Load(); err != nil {
-		// .env is optional, continue without it
-		slog.Warn("Failed to load .env file, continuing without it", "err", err)
+	cfg := &config{}
+	for _, opt := range opts {
+		opt(cfg)
+	}
+
+	// --- NATS init ---
+	if cfg.NatsEnabled {
+		if cfg.NatsConfig.URL == "" {
+			slog.Error("NATS URL is required but not set")
+			return nil, fmt.Errorf("nats URL is required but not set")
+		}
+		nc, err := nats.Connect(cfg.NatsConfig.URL, nats.Name(serviceName))
+		if err != nil {
+			slog.Error("NATS connection failed", "err", err)
+			return nil, fmt.Errorf("nats connection failed: %w", err)
+		}
+		slog.Info("NATS initialized", "url", cfg.NatsConfig.URL)
+
+		// Subscribe to health check Environment
+		go HealthzEventChecker(nc, serviceName)
 	}
 
 	// --- slog init ---
-
-	logLevel := slog.LevelInfo
-	if lvl, ok := os.LookupEnv("LOG_LEVEL"); ok {
-		switch lvl {
-		case "DEBUG":
-			logLevel = slog.LevelDebug
-		case "WARN":
-			logLevel = slog.LevelWarn
-		case "ERROR":
-			logLevel = slog.LevelError
+	if cfg.SlogEnabled {
+		logLevel := slog.LevelInfo
+		if cfg.SlogConfig.logLevel != slog.LevelInfo {
+			logLevel = cfg.SlogConfig.logLevel
 		}
+		logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel}))
+		slog.SetDefault(logger)
+		slog.Info("slog initialized", "level", logLevel)
 	}
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel}))
-	slog.SetDefault(logger)
-	slog.Info("slog initialized", "level", logLevel)
 
 	// --- Sentry init ---
+	if cfg.SentryEnabled {
+		if cfg.SentryConfig.DSN == "" {
+			slog.Error("Sentry DSN is required but not set")
+			return nil, fmt.Errorf("sentry DSN is required but not set")
+		}
 
-	// check if Sentry DSN is set
-	if os.Getenv("SENTRY_DSN") == "" {
-		slog.Warn("SENTRY_DSN not set, Sentry will not be initialized")
-		return nil, fmt.Errorf("SENTRY_DSN environment variable is required")
-	}
-	// check if Sentry environment is set
-	sentryEnv := os.Getenv("SENTRY_ENVIRONMENT")
-	if sentryEnv == "" {
-		sentryEnv = k8s.GetEnvironment()
-	}
-	if sentryEnv == "" {
-		slog.Warn("SENTRY_ENVIRONMENT environment variable is required")
-		return nil, fmt.Errorf("SENTRY_ENVIRONMENT environment variable is required")
-	}
+		sentryConfig := sentry.ClientOptions{
+			AttachStacktrace: true,
+		}
 
-	sentryDsn := os.Getenv("SENTRY_DSN")
-	if err := sentry.Init(sentry.ClientOptions{
-		Dsn:              sentryDsn,
-		Environment:      sentryEnv,
-		AttachStacktrace: true,
-	}); err != nil {
-		slog.Error("Sentry initialization failed", "err", err)
-		return nil, err
+		if cfg.SentryConfig.Environment != "" {
+			sentryConfig.Environment = cfg.SentryConfig.Environment
+		}
+		if cfg.SentryConfig.Release != "" {
+			sentryConfig.Release = cfg.SentryConfig.Release
+		}
+		if cfg.SentryConfig.DSN != "" {
+			sentryConfig.Dsn = cfg.SentryConfig.DSN
+		}
+
+		if err := sentry.Init(sentryConfig); err != nil {
+			slog.Error("Sentry initialization failed", "err", err)
+			return nil, err
+		}
+		slog.Info("Sentry initialized")
 	}
-	slog.Info("Sentry initialized")
 
 	// --- OpenTelemetry init ---
+	if cfg.TraceEnabled {
+		// check if OTEL_EXPORTER_ENDPOINT is set
+		if cfg.TraceConfig.ExporterURL == "" {
+			slog.Error("OpenTelemetry Exporter URL is required but not set")
+			return nil, fmt.Errorf("OpenTelemetry Exporter URL is required but not set")
+		}
 
-	// check if OTEL_EXPORTER_ENDPOINT is set
-	if os.Getenv("OTEL_EXPORTER_ENDPOINT") == "" {
-		slog.Warn("OTEL_EXPORTER_ENDPOINT not set, OpenTelemetry will not be initialized")
-		return nil, fmt.Errorf("OTEL_EXPORTER_ENDPOINT environment variable is required")
+		ctx := context.Background()
+		exporter, err := otlptracegrpc.New(ctx,
+			otlptracegrpc.WithInsecure(),
+			otlptracegrpc.WithEndpoint(cfg.TraceConfig.ExporterURL),
+		)
+		if err != nil {
+			slog.Error("otel exporter init failed", "err", err)
+			return nil, err
+		}
+
+		tp := sdktrace.NewTracerProvider(
+			sdktrace.WithSampler(sdktrace.AlwaysSample()),
+			sdktrace.WithBatcher(exporter),
+			sdktrace.WithResource(
+				resource.NewWithAttributes(semconv.SchemaURL, semconv.ServiceName(serviceName)),
+			),
+		)
+		otel.SetTracerProvider(tp)
+		otel.SetTextMapPropagator(
+			propagation.NewCompositeTextMapPropagator(
+				propagation.TraceContext{},
+				propagation.Baggage{},
+			),
+		)
+		slog.Info("OpenTelemetry initialized")
+		return tp, nil
 	}
 
-	ctx := context.Background()
-	otelEndpoint := os.Getenv("OTEL_EXPORTER_ENDPOINT")
-	exporter, err := otlptracegrpc.New(ctx,
-		otlptracegrpc.WithInsecure(),
-		otlptracegrpc.WithEndpoint(otelEndpoint),
-	)
-	if err != nil {
-		slog.Error("otel exporter init failed", "err", err)
-		return nil, err
-	}
-
-	tp := sdktrace.NewTracerProvider(
-		sdktrace.WithSampler(sdktrace.AlwaysSample()),
-		sdktrace.WithBatcher(exporter),
-		sdktrace.WithResource(
-			resource.NewWithAttributes(semconv.SchemaURL, semconv.ServiceName(serviceName)),
-		),
-	)
-	otel.SetTracerProvider(tp)
-	otel.SetTextMapPropagator(
-		propagation.NewCompositeTextMapPropagator(
-			propagation.TraceContext{},
-			propagation.Baggage{},
-		),
-	)
-	slog.Info("OpenTelemetry initialized")
-	return tp, nil
+	return nil, nil
 }
 
 // ShutdownFunc is a function type for cleaning up telemetry resources
 type ShutdownFunc func()
 
 // Init initializes all telemetry and returns a shutdown function to defer in main.
-func Init(serviceName string) (ShutdownFunc, error) {
-	tp, err := initTelemetry(serviceName)
+func Init(serviceName string, opts ...Option) (ShutdownFunc, error) {
+	cfg := &config{}
+	for _, opt := range opts {
+		opt(cfg)
+	}
+
+	tp, err := initTelemetry(serviceName, opts...)
 	if err != nil {
 		return nil, err
 	}
-	return func() {
-		sentry.Flush(2 * time.Second)
-		if err := tp.Shutdown(context.Background()); err != nil {
-			slog.Error("Error shutting down tracer provider", "err", err)
-		}
-	}, nil
+	if cfg.TraceEnabled && cfg.SentryEnabled {
+		return func() {
+			sentry.Flush(2 * time.Second)
+			if err := tp.Shutdown(context.Background()); err != nil {
+				slog.Error("Error shutting down tracer provider", "err", err)
+			}
+		}, nil
+	} else if cfg.SentryEnabled {
+		return func() {
+			sentry.Flush(2 * time.Second)
+		}, nil
+	}
+	return func() {}, nil
 }
