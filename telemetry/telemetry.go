@@ -113,7 +113,12 @@ func initTelemetry(serviceName string, opts ...Option) (*sdktrace.TracerProvider
 			sdktrace.WithSampler(sdktrace.AlwaysSample()),
 			sdktrace.WithBatcher(exporter),
 			sdktrace.WithResource(
-				resource.NewWithAttributes(semconv.SchemaURL, semconv.ServiceName(serviceName)),
+				resource.NewWithAttributes(
+					semconv.SchemaURL,
+					semconv.ServiceName(serviceName),
+					semconv.DeploymentEnvironment(cfg.SentryConfig.Environment),
+					semconv.ServiceVersion(cfg.SentryConfig.Release),
+				),
 			),
 		)
 		otel.SetTracerProvider(tp)
