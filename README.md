@@ -1,5 +1,9 @@
 # TMSLabs/tooling
 
+[![Tests](https://github.com/TMSLabs/go-tooling/actions/workflows/test.yml/badge.svg)](https://github.com/TMSLabs/go-tooling/actions/workflows/test.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/TMSLabs/go-tooling)](https://goreportcard.com/report/github.com/TMSLabs/go-tooling)
+[![codecov](https://codecov.io/gh/TMSLabs/go-tooling/branch/main/graph/badge.svg)](https://codecov.io/gh/TMSLabs/go-tooling)
+
 ## Testing
 
 This repository includes comprehensive unit and integration tests for all core modules. The test suite covers success scenarios, error cases, and boundary conditions without requiring real external services.
