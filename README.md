@@ -1,5 +1,71 @@
 # TMSLabs/tooling
 
+## Testing
+
+This repository includes comprehensive unit and integration tests for all core modules. The test suite covers success scenarios, error cases, and boundary conditions without requiring real external services.
+
+### Running Tests
+
+To run all tests:
+```bash
+go test ./...
+```
+
+To run tests with verbose output:
+```bash
+go test -v ./...
+```
+
+To run tests for a specific package:
+```bash
+go test -v ./telemetry
+go test -v ./mysqlhelper
+go test -v ./httphelper
+```
+
+To run integration tests specifically:
+```bash
+go test -v -run Integration
+```
+
+To run tests with coverage:
+```bash
+go test -cover ./...
+```
+
+### Test Coverage
+
+The test suite includes:
+
+- **telemetry**: Tests for initialization, health checks, error capture, and configuration options
+- **mysqlhelper**: Tests for database connection and health check functionality
+- **httphelper**: Tests for HTTP request tracing and handler wrapping
+- **Integration tests**: Tests demonstrating integration between telemetry and MySQL/NATS connectivity
+
+### Test Dependencies
+
+Tests use mocks and fakes to avoid dependencies on real external services:
+- No actual MySQL server required (connection failures are tested)
+- No actual NATS server required (connection failures are tested)  
+- No actual Sentry or OpenTelemetry endpoints required
+- HTTP tests use `httptest` for isolated testing
+
+### Running Tests in CI/CD
+
+The tests are designed to run reliably in CI/CD environments without external dependencies:
+
+```bash
+# Basic test run
+go test ./...
+
+# With race detection
+go test -race ./...
+
+# With coverage reporting
+go test -coverprofile=coverage.out ./...
+go tool cover -html=coverage.out -o coverage.html
+```
+
 ## Initializing Telemetry
 
 ```go
