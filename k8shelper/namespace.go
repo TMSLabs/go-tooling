@@ -1,5 +1,5 @@
-// Package k8s provides utilities for working with Kubernetes.
-package k8s
+// Package k8shelper provides utilities for working with Kubernetes.
+package k8shelper
 
 import (
 	"os"
