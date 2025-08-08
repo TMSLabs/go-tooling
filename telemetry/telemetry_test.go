@@ -7,13 +7,14 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestInit_MinimalConfiguration(t *testing.T) {
 	// Test basic initialization with no optional components
 	shutdown, err := Init("test-service", "development")
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, shutdown)
 
 	// Call shutdown function - should not panic
@@ -27,7 +28,7 @@ func TestInit_WithSlog(t *testing.T) {
 		WithSlog(SlogLogLevel(slog.LevelDebug)),
 	)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, shutdown)
 
 	// Verify slog is configured
@@ -45,7 +46,7 @@ func TestInit_WithSentry_MissingDSN(t *testing.T) {
 	)
 
 	// Should fail because DSN is required
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, shutdown)
 	assert.Contains(t, err.Error(), "sentry DSN is required")
 }
@@ -58,7 +59,7 @@ func TestInit_WithSentry_InvalidDSN(t *testing.T) {
 	)
 
 	// Should fail because DSN is invalid
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, shutdown)
 }
 
@@ -97,7 +98,7 @@ func TestInit_WithTrace_MissingExporterURL(t *testing.T) {
 	)
 
 	// Should fail because exporter URL is required
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, shutdown)
 	assert.Contains(t, err.Error(), "OpenTelemetry Exporter URL is required")
 }
@@ -106,7 +107,7 @@ func TestInit_WithTrace_InvalidExporterURL(t *testing.T) {
 	shutdown, err := Init(
 		"test-service",
 		"test",
-		WithTrace(TraceExporterURL("invalid://invalid-url")),
+		WithTrace(TraceExporterURL("http://127.0.0.1:9999")),
 	)
 
 	// The behavior depends on the OpenTelemetry implementation
@@ -117,7 +118,7 @@ func TestInit_WithTrace_InvalidExporterURL(t *testing.T) {
 		shutdown()
 		// Configuration should still be set even if connection works
 		assert.True(t, TelemetryConfig.TraceEnabled)
-		assert.Equal(t, "invalid://invalid-url", TelemetryConfig.TraceConfig.ExporterURL)
+		assert.Equal(t, "http://127.0.0.1:9999", TelemetryConfig.TraceConfig.ExporterURL)
 	} else {
 		assert.Nil(t, shutdown)
 	}
@@ -130,7 +131,7 @@ func TestInit_WithMySQL_MissingDSN(t *testing.T) {
 		WithMySQL(), // No DSN provided - this should work, just not enable health checks
 	)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, shutdown)
 	assert.True(t, TelemetryConfig.MysqlEnabled)
 	assert.Equal(t, "", TelemetryConfig.MysqlConfig.DSN)
@@ -146,7 +147,7 @@ func TestInit_WithNATS_MissingURL(t *testing.T) {
 	)
 
 	// Should fail because NATS URL is required
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, shutdown)
 	assert.Contains(t, err.Error(), "nats URL is required")
 }
@@ -159,7 +160,7 @@ func TestInit_WithNATS_InvalidURL(t *testing.T) {
 	)
 
 	// Should fail because NATS server is unreachable
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, shutdown)
 	assert.Contains(t, err.Error(), "nats connection failed")
 }
@@ -203,7 +204,7 @@ func TestInit_ComplexConfiguration(t *testing.T) {
 func TestShutdownFunc(t *testing.T) {
 	// Create a minimal shutdown function
 	shutdown, err := Init("shutdown-test", "test", WithSlog())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, shutdown)
 
 	// Calling shutdown multiple times should not panic
@@ -267,7 +268,7 @@ func TestConfig_OptionFunctions(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.name, func(_ *testing.T) {
 			cfg := &config{}
 			tt.option(cfg)
 			tt.checkFn(cfg)
@@ -295,7 +296,7 @@ func TestInit_EnvironmentIntegration(t *testing.T) {
 	// but doesn't actually use them in the current implementation
 
 	shutdown, err := Init("env-test", "test")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, shutdown)
 	shutdown()
 }
@@ -305,7 +306,7 @@ func TestInit_ConcurrentCalls(t *testing.T) {
 	results := make(chan error, 10)
 
 	for i := 0; i < 10; i++ {
-		go func(id int) {
+		go func(_ int) {
 			shutdown, err := Init("concurrent-test", "test", WithSlog())
 			if shutdown != nil {
 				// Add small delay to test shutdown timing

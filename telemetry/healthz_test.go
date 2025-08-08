@@ -18,7 +18,7 @@ func TestCheckConnection_Success(t *testing.T) {
 }
 
 func TestCheckConnection_InvalidURL(t *testing.T) {
-	err := CheckConnection("invalid-url")
+	err := CheckConnection("127.0.0.1:9999")
 	assert.Error(t, err)
 }
 
@@ -81,7 +81,7 @@ func TestHealthzEndpointHandler_NATSEnabled_InvalidURL(t *testing.T) {
 	TelemetryConfig = config{
 		NatsEnabled: true,
 		NatsConfig: natsConfig{
-			URL: "invalid-nats-url",
+			URL: "nats://127.0.0.1:9999",
 		},
 	}
 

@@ -11,6 +11,7 @@ import (
 	"github.com/TMSLabs/go-tooling/mysqlhelper"
 	"github.com/TMSLabs/go-tooling/telemetry"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/sdk/trace"
 )
@@ -20,7 +21,7 @@ func TestTelemetryMySQLIntegration(t *testing.T) {
 	// Set up tracing for integration test
 	tp := trace.NewTracerProvider()
 	otel.SetTracerProvider(tp)
-	defer tp.Shutdown(context.Background())
+	defer func() { _ = tp.Shutdown(context.Background()) }()
 
 	// Initialize telemetry with MySQL enabled (but expect connection to fail)
 	shutdown, err := telemetry.Init(
@@ -49,12 +50,12 @@ func TestTelemetryMySQLIntegration(t *testing.T) {
 
 	// Test direct MySQL connection (should fail)
 	db, err := mysqlhelper.Connect(telemetry.TelemetryConfig.MysqlConfig.DSN)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, db)
 
 	// Test MySQL health check through telemetry (should fail)
 	err = mysqlhelper.CheckConnection(telemetry.TelemetryConfig.MysqlConfig.DSN)
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	// Test health endpoint integration
 	req := httptest.NewRequest("GET", "/healthz", nil)
@@ -78,7 +79,7 @@ func TestTelemetryNATSIntegration(t *testing.T) {
 	)
 
 	// Should fail because NATS server doesn't exist
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, shutdown)
 	assert.Contains(t, err.Error(), "nats connection failed")
 
@@ -92,7 +93,7 @@ func TestHTTPTelemetryIntegration(t *testing.T) {
 	// Set up tracing
 	tp := trace.NewTracerProvider()
 	otel.SetTracerProvider(tp)
-	defer tp.Shutdown(context.Background())
+	defer func() { _ = tp.Shutdown(context.Background()) }()
 
 	// Initialize telemetry
 	shutdown, err := telemetry.Init(
@@ -101,7 +102,7 @@ func TestHTTPTelemetryIntegration(t *testing.T) {
 		telemetry.WithSlog(),
 	)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, shutdown)
 	defer shutdown()
 
@@ -115,13 +116,13 @@ func TestHTTPTelemetryIntegration(t *testing.T) {
 		telemetry.CaptureError(ctx, testErr, "Test error in HTTP handler")
 
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("error occurred"))
+		_, _ = w.Write([]byte("error occurred"))
 	}))
 	defer server.Close()
 
 	// Make HTTP request using httphelper with tracing
 	req, err := http.NewRequest("GET", server.URL+"/test", nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	ctx := context.Background()
 	tracer := otel.Tracer("integration-test")
@@ -133,7 +134,7 @@ func TestHTTPTelemetryIntegration(t *testing.T) {
 	// Use httphelper.HTTPDo which adds tracing
 	resp, err := httphelper.HTTPDo(ctx, client, req, "IntegrationTestRequest")
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, resp)
 	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 	defer resp.Body.Close()
@@ -144,7 +145,7 @@ func TestHTTPHandlerTelemetryIntegration(t *testing.T) {
 	// Set up tracing
 	tp := trace.NewTracerProvider()
 	otel.SetTracerProvider(tp)
-	defer tp.Shutdown(context.Background())
+	defer func() { _ = tp.Shutdown(context.Background()) }()
 
 	// Initialize telemetry
 	shutdown, err := telemetry.Init(
@@ -153,7 +154,7 @@ func TestHTTPHandlerTelemetryIntegration(t *testing.T) {
 		telemetry.WithSlog(),
 	)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, shutdown)
 	defer shutdown()
 
@@ -168,7 +169,7 @@ func TestHTTPHandlerTelemetryIntegration(t *testing.T) {
 		}
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("success"))
+		_, _ = w.Write([]byte("success"))
 	}
 
 	// Wrap with httphelper tracing
@@ -197,7 +198,7 @@ func TestFullIntegrationScenario(t *testing.T) {
 	// Set up tracing
 	tp := trace.NewTracerProvider()
 	otel.SetTracerProvider(tp)
-	defer tp.Shutdown(context.Background())
+	defer func() { _ = tp.Shutdown(context.Background()) }()
 
 	// Initialize telemetry with multiple components
 	// Note: This will fail due to missing external services, but demonstrates the integration

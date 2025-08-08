@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestConnect(t *testing.T) {
@@ -44,11 +45,11 @@ func TestConnect(t *testing.T) {
 			db, err := Connect(tt.dsn)
 
 			if tt.wantErr {
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.Nil(t, db)
 				assert.Contains(t, err.Error(), tt.errorContains)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.NotNil(t, db)
 				if db != nil {
 					db.Close()
@@ -96,7 +97,7 @@ func TestCheckConnection(t *testing.T) {
 			err := CheckConnection(tt.dsn)
 
 			if tt.wantErr {
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.Contains(t, err.Error(), tt.errorContains)
 			} else {
 				assert.NoError(t, err)

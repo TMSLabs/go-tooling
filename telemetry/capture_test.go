@@ -5,12 +5,11 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/sdk/trace"
 )
 
-func TestCaptureError_NilError(t *testing.T) {
+func TestCaptureError_NilError(_ *testing.T) {
 	// Reset config to ensure clean state
 	TelemetryConfig = config{}
 
@@ -19,11 +18,10 @@ func TestCaptureError_NilError(t *testing.T) {
 	// Should not panic with nil error
 	CaptureError(ctx, nil, "test message")
 
-	// No error should be fine
-	assert.True(t, true) // Just to have an assertion
+	// Test passes if no panic occurs
 }
 
-func TestCaptureError_WithError_NoTelemetryEnabled(t *testing.T) {
+func TestCaptureError_WithError_NoTelemetryEnabled(_ *testing.T) {
 	// Reset config to disable all telemetry
 	TelemetryConfig = config{}
 
@@ -33,11 +31,10 @@ func TestCaptureError_WithError_NoTelemetryEnabled(t *testing.T) {
 	// Should not panic even without telemetry enabled
 	CaptureError(ctx, testErr, "test error occurred")
 
-	// Should complete without issues
-	assert.True(t, true)
+	// Test passes if no panic occurs
 }
 
-func TestCaptureError_WithSentryEnabled(t *testing.T) {
+func TestCaptureError_WithSentryEnabled(_ *testing.T) {
 	// Configure with Sentry enabled (but not actually initialized to avoid network calls)
 	TelemetryConfig = config{
 		SentryEnabled: true,
@@ -49,14 +46,14 @@ func TestCaptureError_WithSentryEnabled(t *testing.T) {
 	// Should execute Sentry-related code paths without panicking
 	CaptureError(ctx, testErr, "sentry error occurred")
 
-	assert.True(t, true)
+	// Test passes if no panic occurs
 }
 
-func TestCaptureError_WithTraceEnabled(t *testing.T) {
+func TestCaptureError_WithTraceEnabled(_ *testing.T) {
 	// Set up OpenTelemetry tracer for testing
 	tp := trace.NewTracerProvider()
 	otel.SetTracerProvider(tp)
-	defer tp.Shutdown(context.Background())
+	defer func() { _ = tp.Shutdown(context.Background()) }()
 
 	// Configure with tracing enabled
 	TelemetryConfig = config{
@@ -75,14 +72,13 @@ func TestCaptureError_WithTraceEnabled(t *testing.T) {
 
 	// Verify the span status was set to error
 	// Note: In a real test, you'd want to export spans to verify they were recorded correctly
-	assert.True(t, true)
 }
 
-func TestCaptureError_WithBothSentryAndTraceEnabled(t *testing.T) {
+func TestCaptureError_WithBothSentryAndTraceEnabled(_ *testing.T) {
 	// Set up OpenTelemetry tracer
 	tp := trace.NewTracerProvider()
 	otel.SetTracerProvider(tp)
-	defer tp.Shutdown(context.Background())
+	defer func() { _ = tp.Shutdown(context.Background()) }()
 
 	// Configure with both Sentry and tracing enabled
 	TelemetryConfig = config{
@@ -100,14 +96,14 @@ func TestCaptureError_WithBothSentryAndTraceEnabled(t *testing.T) {
 	// Should execute both Sentry and OpenTelemetry code paths
 	CaptureError(ctx, testErr, "error for both systems")
 
-	assert.True(t, true)
+	// Test passes if no panic occurs
 }
 
 func TestCaptureError_DifferentErrorTypes(t *testing.T) {
 	// Configure with tracing for better testing
 	tp := trace.NewTracerProvider()
 	otel.SetTracerProvider(tp)
-	defer tp.Shutdown(context.Background())
+	defer func() { _ = tp.Shutdown(context.Background()) }()
 
 	TelemetryConfig = config{
 		TraceEnabled: true,
@@ -145,10 +141,10 @@ func TestCaptureError_DifferentErrorTypes(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
+		t.Run(tc.name, func(_ *testing.T) {
 			// Should handle different error types and messages without issues
 			CaptureError(ctx, tc.err, tc.message)
-			assert.True(t, true) // Verify no panic
+			// Test passes if no panic occurs
 		})
 	}
 }
@@ -156,7 +152,7 @@ func TestCaptureError_DifferentErrorTypes(t *testing.T) {
 func TestCaptureError_ContextVariations(t *testing.T) {
 	tp := trace.NewTracerProvider()
 	otel.SetTracerProvider(tp)
-	defer tp.Shutdown(context.Background())
+	defer func() { _ = tp.Shutdown(context.Background()) }()
 
 	TelemetryConfig = config{
 		TraceEnabled: true,
@@ -164,6 +160,7 @@ func TestCaptureError_ContextVariations(t *testing.T) {
 
 	testErr := errors.New("context test error")
 
+	type contextKey string
 	testCases := []struct {
 		name string
 		ctx  context.Context
@@ -174,7 +171,7 @@ func TestCaptureError_ContextVariations(t *testing.T) {
 		},
 		{
 			name: "context with value",
-			ctx:  context.WithValue(context.Background(), "key", "value"),
+			ctx:  context.WithValue(context.Background(), contextKey("key"), "value"),
 		},
 		{
 			name: "cancelled context",
@@ -187,18 +184,18 @@ func TestCaptureError_ContextVariations(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
+		t.Run(tc.name, func(_ *testing.T) {
 			// Should handle different context types
 			CaptureError(tc.ctx, testErr, "context variation test")
-			assert.True(t, true)
+			// Test passes if no panic occurs
 		})
 	}
 }
 
-func TestCaptureError_ConcurrentCalls(t *testing.T) {
+func TestCaptureError_ConcurrentCalls(_ *testing.T) {
 	tp := trace.NewTracerProvider()
 	otel.SetTracerProvider(tp)
-	defer tp.Shutdown(context.Background())
+	defer func() { _ = tp.Shutdown(context.Background()) }()
 
 	TelemetryConfig = config{
 		TraceEnabled:  true,
@@ -212,7 +209,7 @@ func TestCaptureError_ConcurrentCalls(t *testing.T) {
 	results := make(chan bool, numGoroutines)
 
 	for i := 0; i < numGoroutines; i++ {
-		go func(id int) {
+		go func(_ int) {
 			tracer := otel.Tracer("concurrent-test")
 
 			for j := 0; j < numCallsPerGoroutine; j++ {
@@ -234,7 +231,7 @@ func TestCaptureError_ConcurrentCalls(t *testing.T) {
 		<-results
 	}
 
-	assert.True(t, true) // Verify no panics occurred
+	// Test passes if no panics occurred
 }
 
 func TestCaptureError_MessageFormatting(t *testing.T) {
@@ -254,10 +251,10 @@ func TestCaptureError_MessageFormatting(t *testing.T) {
 	}
 
 	for _, msg := range messages {
-		t.Run("msg_"+msg[:min(20, len(msg))], func(t *testing.T) {
+		t.Run("msg_"+msg[:minInt(20, len(msg))], func(_ *testing.T) {
 			// Should handle various message formats without issues
 			CaptureError(ctx, testErr, msg)
-			assert.True(t, true)
+			// Test passes if no panic occurs
 		})
 	}
 }
@@ -265,7 +262,7 @@ func TestCaptureError_MessageFormatting(t *testing.T) {
 func TestCaptureError_ErrorMessageExtraction(t *testing.T) {
 	tp := trace.NewTracerProvider()
 	otel.SetTracerProvider(tp)
-	defer tp.Shutdown(context.Background())
+	defer func() { _ = tp.Shutdown(context.Background()) }()
 
 	TelemetryConfig = config{
 		TraceEnabled: true,
@@ -284,15 +281,15 @@ func TestCaptureError_ErrorMessageExtraction(t *testing.T) {
 	}
 
 	for i, err := range errors {
-		t.Run("error_"+string(rune(i+'0')), func(t *testing.T) {
+		t.Run("error_"+string(rune(i+'0')), func(_ *testing.T) {
 			CaptureError(ctx, err, "test message")
-			assert.True(t, true)
+			// Test passes if no panic occurs
 		})
 	}
 }
 
-// Helper function for min (Go 1.21+ has min built-in, but this ensures compatibility)
-func min(a, b int) int {
+// Helper function for minInt (avoiding conflict with builtin min)
+func minInt(a, b int) int {
 	if a < b {
 		return a
 	}

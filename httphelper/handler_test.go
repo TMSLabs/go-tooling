@@ -17,7 +17,7 @@ func TestHTTPHandler(t *testing.T) {
 	// Set up a test tracer provider
 	tp := trace.NewTracerProvider()
 	otel.SetTracerProvider(tp)
-	defer tp.Shutdown(context.Background())
+	defer func() { _ = tp.Shutdown(context.Background()) }()
 
 	tests := []struct {
 		name     string
@@ -68,7 +68,7 @@ func TestHTTPHandler(t *testing.T) {
 				assert.NotNil(t, ctx)
 
 				w.WriteHeader(http.StatusOK)
-				w.Write([]byte("test response"))
+				_, _ = w.Write([]byte("test response"))
 			}
 
 			// Create wrapped handler
@@ -104,10 +104,10 @@ func TestHTTPHandler_TraceExtraction(t *testing.T) {
 	// Set up a test tracer provider
 	tp := trace.NewTracerProvider()
 	otel.SetTracerProvider(tp)
-	defer tp.Shutdown(context.Background())
+	defer func() { _ = tp.Shutdown(context.Background()) }()
 
 	// Create handler that checks for trace context
-	handlerFunc := func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	handlerFunc := func(ctx context.Context, w http.ResponseWriter, _ *http.Request) {
 		// The context should contain trace information
 		assert.NotNil(t, ctx)
 
@@ -144,10 +144,10 @@ func TestHTTPHandler_ErrorHandling(t *testing.T) {
 	// Set up a test tracer provider
 	tp := trace.NewTracerProvider()
 	otel.SetTracerProvider(tp)
-	defer tp.Shutdown(context.Background())
+	defer func() { _ = tp.Shutdown(context.Background()) }()
 
 	// Test handler that panics
-	handlerFunc := func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	handlerFunc := func(_ context.Context, _ http.ResponseWriter, _ *http.Request) {
 		panic("test panic")
 	}
 
@@ -174,13 +174,13 @@ func TestHTTPHandler_MultipleRequests(t *testing.T) {
 	// Set up a test tracer provider
 	tp := trace.NewTracerProvider()
 	otel.SetTracerProvider(tp)
-	defer tp.Shutdown(context.Background())
+	defer func() { _ = tp.Shutdown(context.Background()) }()
 
 	callCount := 0
-	handlerFunc := func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	handlerFunc := func(_ context.Context, w http.ResponseWriter, _ *http.Request) {
 		callCount++
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
+		_, _ = w.Write([]byte("OK"))
 	}
 
 	wrappedHandler := HTTPHandler(handlerFunc, "MultiRequestHandler")

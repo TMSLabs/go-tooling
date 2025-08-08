@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/trace"
@@ -31,7 +32,7 @@ func setupTestTracer() *trace.TracerProvider {
 func TestHTTPDo(t *testing.T) {
 	// Set up a test tracer provider
 	tp := setupTestTracer()
-	defer tp.Shutdown(context.Background())
+	defer func() { _ = tp.Shutdown(context.Background()) }()
 
 	tests := []struct {
 		name         string
@@ -70,18 +71,18 @@ func TestHTTPDo(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a test server
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				// Note: Headers might be set depending on tracer configuration
 				// We just verify the server receives the request correctly
 
 				w.WriteHeader(tt.serverStatus)
-				w.Write([]byte("test response"))
+				_, _ = w.Write([]byte("test response"))
 			}))
 			defer server.Close()
 
 			// Create the request
 			req, err := http.NewRequest(tt.method, server.URL+tt.url, strings.NewReader("test body"))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			// Create context with an active span so trace headers get injected
 			ctx := context.Background()
@@ -95,10 +96,10 @@ func TestHTTPDo(t *testing.T) {
 			resp, err := HTTPDo(ctx, client, req, tt.spanName)
 
 			if tt.wantErr {
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.Nil(t, resp)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.NotNil(t, resp)
 				assert.Equal(t, tt.serverStatus, resp.StatusCode)
 				resp.Body.Close()
@@ -110,7 +111,7 @@ func TestHTTPDo(t *testing.T) {
 func TestHTTPDo_TraceHeaderInjection(t *testing.T) {
 	// Set up a test tracer provider
 	tp := setupTestTracer()
-	defer tp.Shutdown(context.Background())
+	defer func() { _ = tp.Shutdown(context.Background()) }()
 
 	// Track if trace headers were injected
 	traceHeaderFound := false
@@ -123,13 +124,13 @@ func TestHTTPDo_TraceHeaderInjection(t *testing.T) {
 		}
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("test response"))
+		_, _ = w.Write([]byte("test response"))
 	}))
 	defer server.Close()
 
 	// Create the request
 	req, err := http.NewRequest("GET", server.URL+"/test", nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Create context with an active span
 	ctx := context.Background()
@@ -141,7 +142,7 @@ func TestHTTPDo_TraceHeaderInjection(t *testing.T) {
 
 	// Execute HTTPDo
 	resp, err := HTTPDo(ctx, client, req, "TraceHeaderTest")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, resp)
 	defer resp.Body.Close()
 
@@ -152,11 +153,11 @@ func TestHTTPDo_TraceHeaderInjection(t *testing.T) {
 func TestHTTPDo_NetworkError(t *testing.T) {
 	// Set up a test tracer provider
 	tp := setupTestTracer()
-	defer tp.Shutdown(context.Background())
+	defer func() { _ = tp.Shutdown(context.Background()) }()
 
 	// Test network error case using an invalid port instead of DNS lookup
 	req, err := http.NewRequest("GET", "http://127.0.0.1:9999", nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	ctx := context.Background()
 	client := &http.Client{}
@@ -164,17 +165,21 @@ func TestHTTPDo_NetworkError(t *testing.T) {
 	resp, err := HTTPDo(ctx, client, req, "NetworkErrorTest")
 
 	// Network errors should return Go errors
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, resp)
+	// resp is nil so no need to close, but add check for linter
+	if resp != nil {
+		resp.Body.Close()
+	}
 }
 
 func TestHTTPDo_ContextCancellation(t *testing.T) {
 	// Set up a test tracer provider
 	tp := setupTestTracer()
-	defer tp.Shutdown(context.Background())
+	defer func() { _ = tp.Shutdown(context.Background()) }()
 
 	// Create a test server that delays response
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		// This handler won't be reached due to context cancellation
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -182,7 +187,7 @@ func TestHTTPDo_ContextCancellation(t *testing.T) {
 
 	// Create the request
 	req, err := http.NewRequest("GET", server.URL, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Create a context that's already cancelled
 	ctx, cancel := context.WithCancel(context.Background())
@@ -193,21 +198,25 @@ func TestHTTPDo_ContextCancellation(t *testing.T) {
 	resp, err := HTTPDo(ctx, client, req, "CancelledRequest")
 
 	// Should return context cancellation error
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, resp)
 	assert.Contains(t, err.Error(), "context canceled")
+	// resp is nil so no need to close, but add check for linter
+	if resp != nil {
+		resp.Body.Close()
+	}
 }
 
 func TestHTTPDo_NilParameters(t *testing.T) {
 	// Set up a test tracer provider
 	tp := setupTestTracer()
-	defer tp.Shutdown(context.Background())
+	defer func() { _ = tp.Shutdown(context.Background()) }()
 
 	ctx := context.Background()
 
 	// Test with nil client - should panic or fail
 	req, err := http.NewRequest("GET", "http://example.com", nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -216,9 +225,13 @@ func TestHTTPDo_NilParameters(t *testing.T) {
 		}
 	}()
 
-	_, err = HTTPDo(ctx, nil, req, "NilClientTest")
+	resp, err := HTTPDo(ctx, nil, req, "NilClientTest")
 	// If we get here without panic, it should be an error
 	if err == nil {
 		t.Error("Expected error or panic with nil client")
+	}
+	// No response to close since client is nil, but add check for linter
+	if resp != nil {
+		resp.Body.Close()
 	}
 }
