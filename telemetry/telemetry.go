@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/getsentry/sentry-go"
+	sentryotel "github.com/getsentry/sentry-go/otel"
 	"github.com/nats-io/nats.go"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -69,6 +70,13 @@ func initTelemetry(serviceName string, opts ...Option) (*sdktrace.TracerProvider
 		sentryConfig := sentry.ClientOptions{
 			AttachStacktrace: true,
 			SendDefaultPII:   true,
+			EnableTracing:    true,
+			TracesSampler: sentry.TracesSampler(func(ctx sentry.SamplingContext) float64 {
+				if ctx.Span != nil && ctx.Span.Status == sentry.SpanStatusInternalError {
+					return 1.0 // Send trace for errors
+				}
+				return 0.0 // Don't send trace for non-error spans
+			}),
 		}
 
 		if cfg.SentryConfig.Environment != "" {
@@ -85,6 +93,13 @@ func initTelemetry(serviceName string, opts ...Option) (*sdktrace.TracerProvider
 			slog.Error("Sentry initialization failed", "err", err)
 			return nil, err
 		}
+
+		tp := sdktrace.NewTracerProvider(
+			sdktrace.WithSpanProcessor(sentryotel.NewSentrySpanProcessor()),
+		)
+		otel.SetTracerProvider(tp)
+		otel.SetTextMapPropagator(sentryotel.NewSentryPropagator())
+
 		slog.Info("Sentry initialized")
 	}
 
