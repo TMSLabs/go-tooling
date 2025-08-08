@@ -134,7 +134,7 @@ func TestInit_WithMySQL_MissingDSN(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, shutdown)
 	assert.True(t, TelemetryConfig.MysqlEnabled)
-	assert.Equal(t, "", TelemetryConfig.MysqlConfig.DSN)
+	assert.Empty(t, TelemetryConfig.MysqlConfig.DSN)
 
 	shutdown()
 }
@@ -286,10 +286,10 @@ func TestInit_EnvironmentIntegration(t *testing.T) {
 
 	defer func() {
 		// Restore original env vars
-		os.Setenv("SENTRY_DSN", originalSentry)
-		os.Setenv("NATS_SERVERS", originalNats)
-		os.Setenv("MYSQL_DSN", originalMySQL)
-		os.Setenv("OTEL_EXPORTER_ENDPOINT", originalOtel)
+		_ = os.Setenv("SENTRY_DSN", originalSentry)
+		_ = os.Setenv("NATS_SERVERS", originalNats)
+		_ = os.Setenv("MYSQL_DSN", originalMySQL)
+		_ = os.Setenv("OTEL_EXPORTER_ENDPOINT", originalOtel)
 	}()
 
 	// This test demonstrates how the library would be used with environment variables

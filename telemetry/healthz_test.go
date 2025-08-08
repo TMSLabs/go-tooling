@@ -223,7 +223,7 @@ func TestLastHealthCheckEvent_GlobalVariable(t *testing.T) {
 
 	// Test with empty value
 	LastHealthCheckEvent = ""
-	assert.Equal(t, "", LastHealthCheckEvent)
+	assert.Empty(t, LastHealthCheckEvent)
 }
 
 // Note: HealthzEventChecker is hard to test without a real NATS connection
@@ -236,7 +236,9 @@ func TestLastHealthCheckEvent_GlobalVariable(t *testing.T) {
 func TestHealthzEventChecker_Integration(t *testing.T) {
 	// This would be an integration test requiring a real NATS server
 	// Skipping for now as it requires external dependencies
-	t.Skip("Integration test requires real NATS server - use testcontainers or docker-compose for full testing")
+	t.Skip(
+		"Integration test requires real NATS server - use testcontainers or docker-compose for full testing",
+	)
 
 	// Example of how this would work with a real NATS connection:
 	// nc, err := nats.Connect("nats://localhost:4222")
