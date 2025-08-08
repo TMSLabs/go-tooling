@@ -5,6 +5,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/getsentry/sentry-go"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 )
@@ -33,6 +34,15 @@ func HTTPHandler(
 	tracer := otel.Tracer("httphelper")
 
 	return func(w http.ResponseWriter, r *http.Request) {
+		sentry.AddBreadcrumb(&sentry.Breadcrumb{
+			Category: "http.receive",
+			Message:  r.Method + " " + r.URL.String(),
+			Data: map[string]any{
+				"method": r.Method,
+				"url":    r.URL.String(),
+			},
+		})
+
 		ctx := propagator.Extract(r.Context(), propagation.HeaderCarrier(r.Header))
 		ctx, span := tracer.Start(ctx, spanName)
 		defer span.End()

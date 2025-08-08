@@ -3,6 +3,7 @@ package natshelper
 import (
 	"context"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/nats-io/nats.go"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
@@ -23,6 +24,15 @@ import (
 //	    log.Fatalf("Failed to publish message: %v", err)
 //	}
 func Publish(ctx context.Context, nc *nats.Conn, subj string, data []byte) error {
+	sentry.AddBreadcrumb(&sentry.Breadcrumb{
+		Category: "nats.publish",
+		Message:  subj,
+		Data: map[string]interface{}{
+			"subject": subj,
+			"data":    string(data),
+		},
+	})
+
 	tracer := otel.Tracer("natshelper")
 
 	// Start a span for publish
@@ -60,6 +70,15 @@ func Publish(ctx context.Context, nc *nats.Conn, subj string, data []byte) error
 //	    log.Fatalf("Failed to publish message: %v", err)
 //	}
 func PublishMsg(ctx context.Context, nc *nats.Conn, msg *nats.Msg) error {
+	sentry.AddBreadcrumb(&sentry.Breadcrumb{
+		Category: "nats.publish",
+		Message:  msg.Subject,
+		Data: map[string]interface{}{
+			"subject": msg.Subject,
+			"data":    string(msg.Data),
+		},
+	})
+
 	tracer := otel.Tracer("natshelper")
 
 	// Start a span for publish

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/nats-io/nats.go"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
@@ -39,6 +40,15 @@ func Subscribe(
 	tracer := otel.Tracer("natshelper")
 
 	return nc.Subscribe(subj, func(msg *nats.Msg) {
+		sentry.AddBreadcrumb(&sentry.Breadcrumb{
+			Category: "nats.receive",
+			Message:  msg.Subject,
+			Data: map[string]interface{}{
+				"subject": msg.Subject,
+				"data":    string(msg.Data),
+			},
+		})
+
 		ctx := context.Background()
 		// Extract trace context from NATS headers if present
 		if msg.Header != nil {
@@ -82,6 +92,15 @@ func QueueSubscribe(
 	tracer := otel.Tracer("natshelper")
 
 	return nc.QueueSubscribe(subj, queue, func(msg *nats.Msg) {
+		sentry.AddBreadcrumb(&sentry.Breadcrumb{
+			Category: "nats.receive",
+			Message:  msg.Subject,
+			Data: map[string]interface{}{
+				"subject": msg.Subject,
+				"data":    string(msg.Data),
+			},
+		})
+
 		ctx := context.Background()
 		// Extract trace context from NATS headers if present
 		if msg.Header != nil {

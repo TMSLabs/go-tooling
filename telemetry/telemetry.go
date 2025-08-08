@@ -9,7 +9,6 @@ import (
 
 	"github.com/getsentry/sentry-go"
 	"github.com/nats-io/nats.go"
-	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/propagation"
@@ -19,9 +18,6 @@ import (
 
 	"log/slog"
 )
-
-// OtelHandler re-exports otelhttp.NewHandler for convenience
-var OtelHandler = otelhttp.NewHandler
 
 // TelemetryConfig is the configuration for telemetry.
 var TelemetryConfig = config{}
@@ -72,6 +68,7 @@ func initTelemetry(serviceName string, opts ...Option) (*sdktrace.TracerProvider
 
 		sentryConfig := sentry.ClientOptions{
 			AttachStacktrace: true,
+			SendDefaultPII:   true,
 		}
 
 		if cfg.SentryConfig.Environment != "" {
