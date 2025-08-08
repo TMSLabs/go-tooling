@@ -55,7 +55,7 @@ func CaptureError(ctx context.Context, err error, message string) {
 		span := trace.SpanFromContext(ctx)
 		span.SetAttributes(
 			attribute.String("error.message", err.Error()),
-			attribute.String("error.message", message),
+			attribute.String("error.description", message),
 		)
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())

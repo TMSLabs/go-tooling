@@ -155,7 +155,7 @@ func TestInit_WithNATS_InvalidURL(t *testing.T) {
 	shutdown, err := Init(
 		"test-service",
 		"test",
-		WithNATS(NATSURL("nats://nonexistent-host:4222")),
+		WithNATS(NATSURL("nats://127.0.0.1:9999")),
 	)
 
 	// Should fail because NATS server is unreachable
@@ -177,8 +177,8 @@ func TestInit_ComplexConfiguration(t *testing.T) {
 			SentryEnvironment("production"),
 			SentryRelease("v2.0.0"),
 		),
-		WithMySQL(MySQLDSN("user:pass@tcp(localhost:3306)/testdb")),
-		WithNATS(NATSURL("nats://localhost:4222")),
+		WithMySQL(MySQLDSN("user:pass@tcp(127.0.0.1:9998)/testdb")),
+		WithNATS(NATSURL("nats://127.0.0.1:9999")),
 		WithTrace(TraceExporterURL("localhost:4317")),
 	)
 

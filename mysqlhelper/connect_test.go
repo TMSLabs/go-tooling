@@ -33,7 +33,7 @@ func TestConnect(t *testing.T) {
 		},
 		{
 			name:          "non-existent host",
-			dsn:           "user:pass@tcp(nonexistent.host:3306)/dbname",
+			dsn:           "user:pass@tcp(127.0.0.1:9998)/dbname",
 			wantErr:       true,
 			errorContains: "failed to connect to MySQL",
 		},
@@ -85,7 +85,7 @@ func TestCheckConnection(t *testing.T) {
 		},
 		{
 			name:          "non-existent host",
-			dsn:           "user:pass@tcp(nonexistent.host:3306)/dbname",
+			dsn:           "user:pass@tcp(127.0.0.1:9998)/dbname",
 			wantErr:       true,
 			errorContains: "failed to connect to MySQL",
 		},

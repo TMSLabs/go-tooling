@@ -154,8 +154,8 @@ func TestHTTPDo_NetworkError(t *testing.T) {
 	tp := setupTestTracer()
 	defer tp.Shutdown(context.Background())
 
-	// Test network error case
-	req, err := http.NewRequest("GET", "http://nonexistent-host-12345.com", nil)
+	// Test network error case using an invalid port instead of DNS lookup
+	req, err := http.NewRequest("GET", "http://127.0.0.1:9999", nil)
 	assert.NoError(t, err)
 
 	ctx := context.Background()

@@ -27,7 +27,7 @@ func TestTelemetryMySQLIntegration(t *testing.T) {
 		"integration-test-service",
 		"test",
 		telemetry.WithSlog(),
-		telemetry.WithMySQL(telemetry.MySQLDSN("user:pass@tcp(nonexistent:3306)/testdb")),
+		telemetry.WithMySQL(telemetry.MySQLDSN("user:pass@tcp(127.0.0.1:9998)/testdb")),
 	)
 
 	// This will succeed at initialization but fail during health checks
@@ -35,7 +35,7 @@ func TestTelemetryMySQLIntegration(t *testing.T) {
 		t.Logf("Expected initialization error: %v", err)
 		// If init fails, we can still test the configuration
 		assert.True(t, telemetry.TelemetryConfig.MysqlEnabled)
-		assert.Equal(t, "user:pass@tcp(nonexistent:3306)/testdb", telemetry.TelemetryConfig.MysqlConfig.DSN)
+		assert.Equal(t, "user:pass@tcp(127.0.0.1:9998)/testdb", telemetry.TelemetryConfig.MysqlConfig.DSN)
 		return
 	}
 
@@ -74,7 +74,7 @@ func TestTelemetryNATSIntegration(t *testing.T) {
 		"nats-integration-test",
 		"test",
 		telemetry.WithSlog(),
-		telemetry.WithNATS(telemetry.NATSURL("nats://nonexistent-nats:4222")),
+		telemetry.WithNATS(telemetry.NATSURL("nats://127.0.0.1:9999")),
 	)
 
 	// Should fail because NATS server doesn't exist
@@ -84,7 +84,7 @@ func TestTelemetryNATSIntegration(t *testing.T) {
 
 	// Verify configuration was set even though connection failed
 	assert.True(t, telemetry.TelemetryConfig.NatsEnabled)
-	assert.Equal(t, "nats://nonexistent-nats:4222", telemetry.TelemetryConfig.NatsConfig.URL)
+	assert.Equal(t, "nats://127.0.0.1:9999", telemetry.TelemetryConfig.NatsConfig.URL)
 }
 
 // TestHTTPTelemetryIntegration demonstrates HTTP request tracing integration
@@ -205,7 +205,7 @@ func TestFullIntegrationScenario(t *testing.T) {
 		"full-integration-test",
 		"development",
 		telemetry.WithSlog(telemetry.SlogLogLevel(4)), // Info level
-		telemetry.WithMySQL(telemetry.MySQLDSN("user:pass@tcp(localhost:3306)/testdb")),
+		telemetry.WithMySQL(telemetry.MySQLDSN("user:pass@tcp(127.0.0.1:9998)/testdb")),
 		// Note: Intentionally not including NATS, Sentry, or Trace to avoid external dependencies
 	)
 

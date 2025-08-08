@@ -23,7 +23,7 @@ func TestCheckConnection_InvalidURL(t *testing.T) {
 }
 
 func TestCheckConnection_UnreachableServer(t *testing.T) {
-	err := CheckConnection("nats://nonexistent-host:4222")
+	err := CheckConnection("nats://127.0.0.1:9999")
 	assert.Error(t, err)
 }
 
@@ -99,7 +99,7 @@ func TestHealthzEndpointHandler_NATSEnabled_NoHealthCheckEvent(t *testing.T) {
 	TelemetryConfig = config{
 		NatsEnabled: true,
 		NatsConfig: natsConfig{
-			URL: "nats://localhost:4222",
+			URL: "nats://127.0.0.1:9999",
 		},
 	}
 
@@ -129,7 +129,7 @@ func TestHealthzEndpointHandler_NATSEnabled_OldHealthCheckEvent(t *testing.T) {
 	TelemetryConfig = config{
 		NatsEnabled: true,
 		NatsConfig: natsConfig{
-			URL: "nats://localhost:4222", // This will fail to connect
+			URL: "nats://127.0.0.1:9999", // This will fail to connect
 		},
 	}
 
@@ -151,7 +151,7 @@ func TestHealthzEndpointHandler_MultipleServices(t *testing.T) {
 		},
 		NatsEnabled: true,
 		NatsConfig: natsConfig{
-			URL: "nats://localhost:4222",
+			URL: "nats://127.0.0.1:9999",
 		},
 	}
 
