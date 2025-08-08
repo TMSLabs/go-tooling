@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/getsentry/sentry-go"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -29,12 +30,13 @@ func CaptureError(ctx context.Context, err error, message string) {
 
 	// Capture the error using Sentry
 	if TelemetryConfig.SentryEnabled {
+		slog.Error("Sentry error capture", "error", err, "message", message)
 		sentry.AddBreadcrumb(&sentry.Breadcrumb{
 			Category: "error",
 			Message:  message,
 			Data: map[string]any{
 				"error":   err.Error(),
-				"context": ctx,
+				"message": message,
 			},
 			Level: sentry.LevelError,
 		})
@@ -49,14 +51,16 @@ func CaptureError(ctx context.Context, err error, message string) {
 
 	// If OpenTelemetry is enabled, record the error in the current span
 	if TelemetryConfig.TraceEnabled {
+		slog.Error("OpenTelemetry error capture", "error", err, "message", message)
 		span := trace.SpanFromContext(ctx)
+		span.SetAttributes(
+			attribute.String("error.message", err.Error()),
+			attribute.String("error.message", message),
+		)
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 	}
 
-	if TelemetryConfig.SlogEnabled {
-		// Log the error using slog if enabled
-		slog.Error(message, "error", err)
-	}
+	slog.Error("Error captured", "error", err, "message", message)
 
 }
