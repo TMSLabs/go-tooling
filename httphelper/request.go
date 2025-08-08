@@ -39,7 +39,7 @@ func HTTPDo(
 	spanName string,
 ) (*http.Response, error) {
 	propagator := otel.GetTextMapPropagator()
-	tracer := otel.Tracer("otelhttp")
+	tracer := otel.Tracer("httphelper")
 
 	ctx, span := tracer.Start(ctx, spanName)
 	defer span.End()

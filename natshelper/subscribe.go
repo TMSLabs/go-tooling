@@ -45,7 +45,7 @@ func Subscribe(
 			ctx = otel.GetTextMapPropagator().Extract(ctx, propagation.HeaderCarrier(msg.Header))
 		}
 		// Start a new span for message processing
-		ctx, span := tracer.Start(ctx, fmt.Sprintf("nats.receive.%s", subj))
+		ctx, span := tracer.Start(ctx, fmt.Sprintf("nats.receive.%s", msg.Subject))
 		defer span.End()
 		handler(ctx, msg)
 	})
@@ -88,7 +88,7 @@ func QueueSubscribe(
 			ctx = otel.GetTextMapPropagator().Extract(ctx, propagation.HeaderCarrier(msg.Header))
 		}
 		// Start a new span for message processing
-		ctx, span := tracer.Start(ctx, fmt.Sprintf("nats.receive.%s", subj))
+		ctx, span := tracer.Start(ctx, fmt.Sprintf("nats.receive.%s", msg.Subject))
 		defer span.End()
 		handler(ctx, msg)
 	})
