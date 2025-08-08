@@ -9,11 +9,11 @@ func main() {
 
 	shutdown, err := telemetry.Init(
 		"nats-event-logger",
+		k8shelper.GetEnvironment(),
 		telemetry.WithSentry(
 			telemetry.SentryDSN(
 				os.Getenv("SENTRY_DSN"),
 			),
-			telemetry.SentryEnvironment(k8shelper.GetEnvironment()),
 		),
 		telemetry.WithSlog(),
 		telemetry.WithNATS(telemetry.NATSURL(os.Getenv("NATS_SERVERS"))),

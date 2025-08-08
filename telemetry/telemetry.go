@@ -25,7 +25,11 @@ var TelemetryConfig = config{}
 
 // initTelemetry initializes slog, OpenTelemetry, and Sentry.
 // Returns the TracerProvider for shutdown.
-func initTelemetry(serviceName string, opts ...Option) (*sdktrace.TracerProvider, error) {
+func initTelemetry(
+	serviceName string,
+	environment string,
+	opts ...Option,
+) (*sdktrace.TracerProvider, error) {
 
 	cfg := &config{}
 	for _, opt := range opts {
@@ -81,6 +85,7 @@ func initTelemetry(serviceName string, opts ...Option) (*sdktrace.TracerProvider
 			}),
 		}
 
+		sentryConfig.Environment = environment
 		if cfg.SentryConfig.Environment != "" {
 			sentryConfig.Environment = cfg.SentryConfig.Environment
 		}
@@ -130,7 +135,7 @@ func initTelemetry(serviceName string, opts ...Option) (*sdktrace.TracerProvider
 				resource.NewWithAttributes(
 					semconv.SchemaURL,
 					semconv.ServiceName(serviceName),
-					semconv.DeploymentEnvironment(cfg.SentryConfig.Environment),
+					semconv.DeploymentEnvironment(cfg.Environment),
 					semconv.ServiceVersion(cfg.SentryConfig.Release),
 				),
 			),
@@ -153,13 +158,13 @@ func initTelemetry(serviceName string, opts ...Option) (*sdktrace.TracerProvider
 type ShutdownFunc func()
 
 // Init initializes all telemetry and returns a shutdown function to defer in main.
-func Init(serviceName string, opts ...Option) (ShutdownFunc, error) {
+func Init(serviceName string, environment string, opts ...Option) (ShutdownFunc, error) {
 	cfg := &config{}
 	for _, opt := range opts {
 		opt(cfg)
 	}
 
-	tp, err := initTelemetry(serviceName, opts...)
+	tp, err := initTelemetry(serviceName, environment, opts...)
 	if err != nil {
 		return nil, err
 	}
