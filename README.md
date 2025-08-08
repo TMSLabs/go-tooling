@@ -4,16 +4,30 @@
 
 ```go
 func main() {
-	shutdown, err := telemetry.Init()
+
+	_ = godotenv.Load()
+
+	shutdown, err := telemetry.Init(
+		"nats-event-logger",
+		telemetry.WithSentry(
+			telemetry.SentryDSN(
+				os.Getenv("SENTRY_DSN"),
+			),
+			telemetry.SentryEnvironment(k8shelper.GetEnvironment()),
+		),
+		telemetry.WithSlog(),
+		telemetry.WithNATS(telemetry.NATSURL(os.Getenv("NATS_SERVERS"))),
+		telemetry.WithMySQL(telemetry.MySQLDSN(os.Getenv("MYSQL_DSN"))),
+		telemetry.WithTrace(telemetry.TraceExporterURL(os.Getenv("OTEL_EXPORTER_ENDPOINT"))),
+	)
 	if err != nil {
-		// Using slog after telemetry.Init sets up slog
-		// If slog isn't available, fallback to standard log
-		println("telemetry init failed:", err.Error())
+		slog.Error("telemetry init failed", "error", err)
+		sentry.CaptureException(err)
 		os.Exit(1)
 	}
 	defer shutdown()
 
-    // Your application logic here
+	// Your application logic here
 }
 ```
 
