@@ -11,6 +11,7 @@ type Option func(*config)
 
 // config holds the configuration for telemetry components like MySQL, NATS, Sentry, slog, and tracing.
 type config struct {
+	ServiceName   string
 	MysqlConfig   mySQLConfig
 	MysqlEnabled  bool
 	NatsConfig    natsConfig

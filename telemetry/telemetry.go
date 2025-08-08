@@ -31,6 +31,8 @@ func initTelemetry(serviceName string, opts ...Option) (*sdktrace.TracerProvider
 	for _, opt := range opts {
 		opt(cfg)
 	}
+	cfg.ServiceName = serviceName
+	TelemetryConfig = *cfg
 
 	// --- NATS init ---
 	if cfg.NatsEnabled {
