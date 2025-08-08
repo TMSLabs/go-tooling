@@ -52,7 +52,7 @@ func TestConnect(t *testing.T) {
 				require.NoError(t, err)
 				assert.NotNil(t, db)
 				if db != nil {
-					db.Close()
+					_ = db.Close()
 				}
 			}
 		})
@@ -115,7 +115,9 @@ func TestCheckConnection_Integration(t *testing.T) {
 
 	// This test would require a real MySQL connection, but we can demonstrate the concept
 	// In a real scenario, you'd set up a test database or use testcontainers
-	t.Skip("Integration test requires real MySQL instance - use testcontainers or docker-compose for full integration testing")
+	t.Skip(
+		"Integration test requires real MySQL instance - use testcontainers or docker-compose for full integration testing",
+	)
 
 	// Example of how this would work:
 	// validDSN := os.Getenv("TEST_MYSQL_DSN")

@@ -36,7 +36,11 @@ func TestTelemetryMySQLIntegration(t *testing.T) {
 		t.Logf("Expected initialization error: %v", err)
 		// If init fails, we can still test the configuration
 		assert.True(t, telemetry.TelemetryConfig.MysqlEnabled)
-		assert.Equal(t, "user:pass@tcp(127.0.0.1:9998)/testdb", telemetry.TelemetryConfig.MysqlConfig.DSN)
+		assert.Equal(
+			t,
+			"user:pass@tcp(127.0.0.1:9998)/testdb",
+			telemetry.TelemetryConfig.MysqlConfig.DSN,
+		)
 		return
 	}
 
@@ -137,7 +141,9 @@ func TestHTTPTelemetryIntegration(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, resp)
 	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 }
 
 // TestHTTPHandlerTelemetryIntegration demonstrates HTTP handler tracing integration

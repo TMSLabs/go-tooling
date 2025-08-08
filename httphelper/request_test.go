@@ -71,17 +71,23 @@ func TestHTTPDo(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a test server
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-				// Note: Headers might be set depending on tracer configuration
-				// We just verify the server receives the request correctly
+			server := httptest.NewServer(
+				http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+					// Note: Headers might be set depending on tracer configuration
+					// We just verify the server receives the request correctly
 
-				w.WriteHeader(tt.serverStatus)
-				_, _ = w.Write([]byte("test response"))
-			}))
+					w.WriteHeader(tt.serverStatus)
+					_, _ = w.Write([]byte("test response"))
+				}),
+			)
 			defer server.Close()
 
 			// Create the request
-			req, err := http.NewRequest(tt.method, server.URL+tt.url, strings.NewReader("test body"))
+			req, err := http.NewRequest(
+				tt.method,
+				server.URL+tt.url,
+				strings.NewReader("test body"),
+			)
 			require.NoError(t, err)
 
 			// Create context with an active span so trace headers get injected
@@ -102,7 +108,7 @@ func TestHTTPDo(t *testing.T) {
 				require.NoError(t, err)
 				assert.NotNil(t, resp)
 				assert.Equal(t, tt.serverStatus, resp.StatusCode)
-				resp.Body.Close()
+				_ = resp.Body.Close()
 			}
 		})
 	}
@@ -144,10 +150,16 @@ func TestHTTPDo_TraceHeaderInjection(t *testing.T) {
 	resp, err := HTTPDo(ctx, client, req, "TraceHeaderTest")
 	require.NoError(t, err)
 	assert.NotNil(t, resp)
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	// Verify trace header was injected when there's an active span
-	assert.True(t, traceHeaderFound, "Expected trace header to be injected when there's an active span")
+	assert.True(
+		t,
+		traceHeaderFound,
+		"Expected trace header to be injected when there's an active span",
+	)
 }
 
 func TestHTTPDo_NetworkError(t *testing.T) {
@@ -169,7 +181,7 @@ func TestHTTPDo_NetworkError(t *testing.T) {
 	assert.Nil(t, resp)
 	// resp is nil so no need to close, but add check for linter
 	if resp != nil {
-		resp.Body.Close()
+		_ = resp.Body.Close()
 	}
 }
 
@@ -203,7 +215,7 @@ func TestHTTPDo_ContextCancellation(t *testing.T) {
 	assert.Contains(t, err.Error(), "context canceled")
 	// resp is nil so no need to close, but add check for linter
 	if resp != nil {
-		resp.Body.Close()
+		_ = resp.Body.Close()
 	}
 }
 
@@ -232,6 +244,6 @@ func TestHTTPDo_NilParameters(t *testing.T) {
 	}
 	// No response to close since client is nil, but add check for linter
 	if resp != nil {
-		resp.Body.Close()
+		_ = resp.Body.Close()
 	}
 }
