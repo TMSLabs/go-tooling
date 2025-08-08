@@ -12,38 +12,38 @@ import (
 func TestInit_MinimalConfiguration(t *testing.T) {
 	// Test basic initialization with no optional components
 	shutdown, err := Init("test-service", "development")
-	
+
 	assert.NoError(t, err)
 	assert.NotNil(t, shutdown)
-	
+
 	// Call shutdown function - should not panic
 	shutdown()
 }
 
 func TestInit_WithSlog(t *testing.T) {
 	shutdown, err := Init(
-		"test-service", 
-		"test", 
+		"test-service",
+		"test",
 		WithSlog(SlogLogLevel(slog.LevelDebug)),
 	)
-	
+
 	assert.NoError(t, err)
 	assert.NotNil(t, shutdown)
-	
+
 	// Verify slog is configured
 	assert.True(t, TelemetryConfig.SlogEnabled)
 	assert.Equal(t, slog.LevelDebug, TelemetryConfig.SlogConfig.logLevel)
-	
+
 	shutdown()
 }
 
 func TestInit_WithSentry_MissingDSN(t *testing.T) {
 	shutdown, err := Init(
-		"test-service", 
-		"test", 
+		"test-service",
+		"test",
 		WithSentry(), // No DSN provided
 	)
-	
+
 	// Should fail because DSN is required
 	assert.Error(t, err)
 	assert.Nil(t, shutdown)
@@ -52,11 +52,11 @@ func TestInit_WithSentry_MissingDSN(t *testing.T) {
 
 func TestInit_WithSentry_InvalidDSN(t *testing.T) {
 	shutdown, err := Init(
-		"test-service", 
-		"test", 
+		"test-service",
+		"test",
 		WithSentry(SentryDSN("invalid-dsn")),
 	)
-	
+
 	// Should fail because DSN is invalid
 	assert.Error(t, err)
 	assert.Nil(t, shutdown)
@@ -65,23 +65,23 @@ func TestInit_WithSentry_InvalidDSN(t *testing.T) {
 func TestInit_WithSentry_ValidDSN(t *testing.T) {
 	// Use a test DSN format (not a real endpoint)
 	testDSN := "https://test@o123456.ingest.us.sentry.io/123456"
-	
+
 	shutdown, err := Init(
-		"test-service", 
-		"test", 
+		"test-service",
+		"test",
 		WithSentry(
 			SentryDSN(testDSN),
 			SentryEnvironment("test"),
 			SentryRelease("v1.0.0"),
 		),
 	)
-	
+
 	// This might fail or succeed depending on network, but we can check config was set
 	if err == nil {
 		assert.NotNil(t, shutdown)
 		shutdown()
 	}
-	
+
 	// Verify configuration was set
 	assert.True(t, TelemetryConfig.SentryEnabled)
 	assert.Equal(t, testDSN, TelemetryConfig.SentryConfig.DSN)
@@ -91,11 +91,11 @@ func TestInit_WithSentry_ValidDSN(t *testing.T) {
 
 func TestInit_WithTrace_MissingExporterURL(t *testing.T) {
 	shutdown, err := Init(
-		"test-service", 
-		"test", 
+		"test-service",
+		"test",
 		WithTrace(), // No exporter URL provided
 	)
-	
+
 	// Should fail because exporter URL is required
 	assert.Error(t, err)
 	assert.Nil(t, shutdown)
@@ -104,11 +104,11 @@ func TestInit_WithTrace_MissingExporterURL(t *testing.T) {
 
 func TestInit_WithTrace_InvalidExporterURL(t *testing.T) {
 	shutdown, err := Init(
-		"test-service", 
-		"test", 
+		"test-service",
+		"test",
 		WithTrace(TraceExporterURL("invalid://invalid-url")),
 	)
-	
+
 	// The behavior depends on the OpenTelemetry implementation
 	// Some invalid URLs might still work during initialization but fail during export
 	// Let's just verify that the configuration was set correctly
@@ -125,26 +125,26 @@ func TestInit_WithTrace_InvalidExporterURL(t *testing.T) {
 
 func TestInit_WithMySQL_MissingDSN(t *testing.T) {
 	shutdown, err := Init(
-		"test-service", 
-		"test", 
+		"test-service",
+		"test",
 		WithMySQL(), // No DSN provided - this should work, just not enable health checks
 	)
-	
+
 	assert.NoError(t, err)
 	assert.NotNil(t, shutdown)
 	assert.True(t, TelemetryConfig.MysqlEnabled)
 	assert.Equal(t, "", TelemetryConfig.MysqlConfig.DSN)
-	
+
 	shutdown()
 }
 
 func TestInit_WithNATS_MissingURL(t *testing.T) {
 	shutdown, err := Init(
-		"test-service", 
-		"test", 
+		"test-service",
+		"test",
 		WithNATS(), // No URL provided
 	)
-	
+
 	// Should fail because NATS URL is required
 	assert.Error(t, err)
 	assert.Nil(t, shutdown)
@@ -153,11 +153,11 @@ func TestInit_WithNATS_MissingURL(t *testing.T) {
 
 func TestInit_WithNATS_InvalidURL(t *testing.T) {
 	shutdown, err := Init(
-		"test-service", 
-		"test", 
+		"test-service",
+		"test",
 		WithNATS(NATSURL("nats://nonexistent-host:4222")),
 	)
-	
+
 	// Should fail because NATS server is unreachable
 	assert.Error(t, err)
 	assert.Nil(t, shutdown)
@@ -167,7 +167,7 @@ func TestInit_WithNATS_InvalidURL(t *testing.T) {
 func TestInit_ComplexConfiguration(t *testing.T) {
 	// Test configuration with multiple components (that should fail gracefully)
 	testDSN := "https://test@o123456.ingest.us.sentry.io/123456"
-	
+
 	shutdown, err := Init(
 		"complex-test-service",
 		"production",
@@ -181,7 +181,7 @@ func TestInit_ComplexConfiguration(t *testing.T) {
 		WithNATS(NATSURL("nats://localhost:4222")),
 		WithTrace(TraceExporterURL("localhost:4317")),
 	)
-	
+
 	// This will likely fail due to missing services, but we can check configuration
 	if err != nil {
 		// Expected - services aren't running
@@ -190,7 +190,7 @@ func TestInit_ComplexConfiguration(t *testing.T) {
 		assert.NotNil(t, shutdown)
 		shutdown()
 	}
-	
+
 	// Verify all configurations were set
 	assert.True(t, TelemetryConfig.SlogEnabled)
 	assert.True(t, TelemetryConfig.SentryEnabled)
@@ -205,7 +205,7 @@ func TestShutdownFunc(t *testing.T) {
 	shutdown, err := Init("shutdown-test", "test", WithSlog())
 	assert.NoError(t, err)
 	assert.NotNil(t, shutdown)
-	
+
 	// Calling shutdown multiple times should not panic
 	shutdown()
 	shutdown()
@@ -214,12 +214,12 @@ func TestShutdownFunc(t *testing.T) {
 
 func TestConfig_OptionFunctions(t *testing.T) {
 	tests := []struct {
-		name     string
-		option   Option
-		checkFn  func(*config)
+		name    string
+		option  Option
+		checkFn func(*config)
 	}{
 		{
-			name: "WithSlog sets slog config",
+			name:   "WithSlog sets slog config",
 			option: WithSlog(SlogLogLevel(slog.LevelWarn)),
 			checkFn: func(cfg *config) {
 				assert.True(t, cfg.SlogEnabled)
@@ -241,7 +241,7 @@ func TestConfig_OptionFunctions(t *testing.T) {
 			},
 		},
 		{
-			name: "WithTrace sets trace config",
+			name:   "WithTrace sets trace config",
 			option: WithTrace(TraceExporterURL("test-url")),
 			checkFn: func(cfg *config) {
 				assert.True(t, cfg.TraceEnabled)
@@ -249,7 +249,7 @@ func TestConfig_OptionFunctions(t *testing.T) {
 			},
 		},
 		{
-			name: "WithMySQL sets mysql config",
+			name:   "WithMySQL sets mysql config",
 			option: WithMySQL(MySQLDSN("test-mysql-dsn")),
 			checkFn: func(cfg *config) {
 				assert.True(t, cfg.MysqlEnabled)
@@ -257,7 +257,7 @@ func TestConfig_OptionFunctions(t *testing.T) {
 			},
 		},
 		{
-			name: "WithNATS sets nats config",
+			name:   "WithNATS sets nats config",
 			option: WithNATS(NATSURL("test-nats-url")),
 			checkFn: func(cfg *config) {
 				assert.True(t, cfg.NatsEnabled)
@@ -282,7 +282,7 @@ func TestInit_EnvironmentIntegration(t *testing.T) {
 	originalNats := os.Getenv("NATS_SERVERS")
 	originalMySQL := os.Getenv("MYSQL_DSN")
 	originalOtel := os.Getenv("OTEL_EXPORTER_ENDPOINT")
-	
+
 	defer func() {
 		// Restore original env vars
 		os.Setenv("SENTRY_DSN", originalSentry)
@@ -293,7 +293,7 @@ func TestInit_EnvironmentIntegration(t *testing.T) {
 
 	// This test demonstrates how the library would be used with environment variables
 	// but doesn't actually use them in the current implementation
-	
+
 	shutdown, err := Init("env-test", "test")
 	assert.NoError(t, err)
 	assert.NotNil(t, shutdown)
@@ -303,7 +303,7 @@ func TestInit_EnvironmentIntegration(t *testing.T) {
 func TestInit_ConcurrentCalls(t *testing.T) {
 	// Test that concurrent calls to Init don't cause race conditions
 	results := make(chan error, 10)
-	
+
 	for i := 0; i < 10; i++ {
 		go func(id int) {
 			shutdown, err := Init("concurrent-test", "test", WithSlog())
@@ -315,7 +315,7 @@ func TestInit_ConcurrentCalls(t *testing.T) {
 			results <- err
 		}(i)
 	}
-	
+
 	// Collect results
 	for i := 0; i < 10; i++ {
 		err := <-results

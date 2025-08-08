@@ -66,7 +66,7 @@ func TestHTTPHandler(t *testing.T) {
 
 				// Verify context contains span
 				assert.NotNil(t, ctx)
-				
+
 				w.WriteHeader(http.StatusOK)
 				w.Write([]byte("test response"))
 			}
@@ -76,7 +76,7 @@ func TestHTTPHandler(t *testing.T) {
 
 			// Create test request
 			req := httptest.NewRequest(tt.method, tt.url, strings.NewReader("test body"))
-			
+
 			// Set headers
 			for key, value := range tt.headers {
 				req.Header.Set(key, value)
@@ -92,7 +92,7 @@ func TestHTTPHandler(t *testing.T) {
 			assert.True(t, handlerCalled, "Handler function should have been called")
 			assert.NotNil(t, receivedCtx, "Context should not be nil")
 			assert.NotNil(t, receivedReq, "Request should not be nil")
-			
+
 			// Verify response
 			assert.Equal(t, http.StatusOK, w.Code)
 			assert.Equal(t, "test response", w.Body.String())
@@ -110,7 +110,7 @@ func TestHTTPHandler_TraceExtraction(t *testing.T) {
 	handlerFunc := func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 		// The context should contain trace information
 		assert.NotNil(t, ctx)
-		
+
 		w.WriteHeader(http.StatusOK)
 	}
 
@@ -118,22 +118,22 @@ func TestHTTPHandler_TraceExtraction(t *testing.T) {
 
 	// Create request with trace context
 	req := httptest.NewRequest("GET", "/test", nil)
-	
+
 	// Add trace context using OpenTelemetry propagator
 	propagator := propagation.NewCompositeTextMapPropagator(
 		propagation.TraceContext{},
 		propagation.Baggage{},
 	)
-	
+
 	// Create a parent context with a span
 	ctx := context.Background()
 	tracer := otel.Tracer("test")
 	parentCtx, parentSpan := tracer.Start(ctx, "parent-span")
 	defer parentSpan.End()
-	
+
 	// Inject the context into headers
 	propagator.Inject(parentCtx, propagation.HeaderCarrier(req.Header))
-	
+
 	w := httptest.NewRecorder()
 	wrappedHandler.ServeHTTP(w, req)
 
@@ -165,7 +165,7 @@ func TestHTTPHandler_ErrorHandling(t *testing.T) {
 	}()
 
 	wrappedHandler.ServeHTTP(w, req)
-	
+
 	// If we get here, the panic was handled internally
 	// The response code would depend on how panics are handled
 }
@@ -212,9 +212,9 @@ func TestHTTPHandler_NilHandler(t *testing.T) {
 
 	// Should panic when creating handler with nil function
 	wrappedHandler := HTTPHandler(nil, "NilHandler")
-	
+
 	req := httptest.NewRequest("GET", "/test", nil)
 	w := httptest.NewRecorder()
-	
+
 	wrappedHandler.ServeHTTP(w, req)
 }

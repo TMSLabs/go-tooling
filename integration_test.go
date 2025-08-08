@@ -38,7 +38,7 @@ func TestTelemetryMySQLIntegration(t *testing.T) {
 		assert.Equal(t, "user:pass@tcp(nonexistent:3306)/testdb", telemetry.TelemetryConfig.MysqlConfig.DSN)
 		return
 	}
-	
+
 	assert.NotNil(t, shutdown)
 	defer shutdown()
 
@@ -110,10 +110,10 @@ func TestHTTPTelemetryIntegration(t *testing.T) {
 		// Simulate an error that gets captured by telemetry
 		ctx := r.Context()
 		testErr := assert.AnError
-		
+
 		// Use telemetry error capture
 		telemetry.CaptureError(ctx, testErr, "Test error in HTTP handler")
-		
+
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("error occurred"))
 	}))
@@ -212,7 +212,7 @@ func TestFullIntegrationScenario(t *testing.T) {
 	if err != nil {
 		// Expected due to MySQL connection failure
 		t.Logf("Expected initialization error: %v", err)
-		
+
 		// Verify configuration was set
 		assert.True(t, telemetry.TelemetryConfig.SlogEnabled)
 		assert.True(t, telemetry.TelemetryConfig.MysqlEnabled)
@@ -262,7 +262,7 @@ func TestIntegrationWithRealTime(t *testing.T) {
 	// Test with an old timestamp
 	oldTime := time.Now().Add(-10 * time.Minute)
 	telemetry.LastHealthCheckEvent = oldTime.Format(time.RFC3339)
-	
+
 	assert.Equal(t, oldTime.Format(time.RFC3339), telemetry.LastHealthCheckEvent)
 }
 

@@ -30,7 +30,7 @@ func TestCheckConnection_UnreachableServer(t *testing.T) {
 func TestHealthzEndpointHandler_NoConfigEnabled(t *testing.T) {
 	// Reset telemetry config to default (no services enabled)
 	TelemetryConfig = config{}
-	
+
 	req := httptest.NewRequest("GET", "/healthz", nil)
 	w := httptest.NewRecorder()
 
@@ -102,7 +102,7 @@ func TestHealthzEndpointHandler_NATSEnabled_NoHealthCheckEvent(t *testing.T) {
 			URL: "nats://localhost:4222",
 		},
 	}
-	
+
 	// Reset health check event
 	LastHealthCheckEvent = ""
 
@@ -120,11 +120,11 @@ func TestHealthzEndpointHandler_NATSEnabled_OldHealthCheckEvent(t *testing.T) {
 	// Mock a scenario where NATS connection would succeed but health check event is old
 	// This is harder to test without mocking the CheckConnection function
 	// For now, we test the logic around event timing
-	
+
 	// Set an old health check event (more than 5 minutes ago)
 	oldTime := time.Now().Add(-10 * time.Minute)
 	LastHealthCheckEvent = oldTime.Format(time.RFC3339)
-	
+
 	// Even with valid-looking config, the connection check will fail first
 	TelemetryConfig = config{
 		NatsEnabled: true,
@@ -168,9 +168,9 @@ func TestHealthzEndpointHandler_MultipleServices(t *testing.T) {
 func TestHealthzEndpointHandler_HTTPMethods(t *testing.T) {
 	// Reset config
 	TelemetryConfig = config{}
-	
+
 	methods := []string{"GET", "POST", "PUT", "DELETE", "PATCH"}
-	
+
 	for _, method := range methods {
 		t.Run(method, func(t *testing.T) {
 			req := httptest.NewRequest(method, "/healthz", nil)
@@ -188,21 +188,21 @@ func TestHealthzEndpointHandler_HTTPMethods(t *testing.T) {
 func TestHealthzEndpointHandler_ResponseFormat(t *testing.T) {
 	// Reset config
 	TelemetryConfig = config{}
-	
+
 	req := httptest.NewRequest("GET", "/healthz", nil)
 	w := httptest.NewRecorder()
 
 	HealthzEndpointHandler(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
-	
+
 	// Check response format
 	body := w.Body.String()
 	assert.Contains(t, body, "status")
 	assert.Contains(t, body, "ok")
 	assert.Contains(t, body, "message")
 	assert.Contains(t, body, "Service is healthy")
-	
+
 	// Should be JSON-like format
 	assert.True(t, strings.HasPrefix(body, "{"))
 	assert.True(t, strings.HasSuffix(strings.TrimSpace(body), "}"))
@@ -218,9 +218,9 @@ func TestLastHealthCheckEvent_GlobalVariable(t *testing.T) {
 	// Test setting and getting the value
 	testTime := time.Now().Format(time.RFC3339)
 	LastHealthCheckEvent = testTime
-	
+
 	assert.Equal(t, testTime, LastHealthCheckEvent)
-	
+
 	// Test with empty value
 	LastHealthCheckEvent = ""
 	assert.Equal(t, "", LastHealthCheckEvent)
@@ -237,19 +237,19 @@ func TestHealthzEventChecker_Integration(t *testing.T) {
 	// This would be an integration test requiring a real NATS server
 	// Skipping for now as it requires external dependencies
 	t.Skip("Integration test requires real NATS server - use testcontainers or docker-compose for full testing")
-	
+
 	// Example of how this would work with a real NATS connection:
 	// nc, err := nats.Connect("nats://localhost:4222")
 	// if err != nil {
 	//     t.Skipf("NATS server not available: %v", err)
 	// }
 	// defer nc.Close()
-	// 
+	//
 	// go HealthzEventChecker(nc, "test-service")
-	// 
+	//
 	// // Wait for health check event to be published and received
 	// time.Sleep(time.Second * 2)
-	// 
+	//
 	// // Verify LastHealthCheckEvent was updated
 	// assert.NotEmpty(t, LastHealthCheckEvent)
 }

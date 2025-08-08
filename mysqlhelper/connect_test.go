@@ -42,7 +42,7 @@ func TestConnect(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			db, err := Connect(tt.dsn)
-			
+
 			if tt.wantErr {
 				assert.Error(t, err)
 				assert.Nil(t, db)
@@ -94,7 +94,7 @@ func TestCheckConnection(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := CheckConnection(tt.dsn)
-			
+
 			if tt.wantErr {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tt.errorContains)
@@ -115,13 +115,13 @@ func TestCheckConnection_Integration(t *testing.T) {
 	// This test would require a real MySQL connection, but we can demonstrate the concept
 	// In a real scenario, you'd set up a test database or use testcontainers
 	t.Skip("Integration test requires real MySQL instance - use testcontainers or docker-compose for full integration testing")
-	
+
 	// Example of how this would work:
 	// validDSN := os.Getenv("TEST_MYSQL_DSN")
 	// if validDSN == "" {
 	// 	t.Skip("TEST_MYSQL_DSN not set, skipping MySQL integration test")
 	// }
-	// 
+	//
 	// err := CheckConnection(validDSN)
 	// assert.NoError(t, err)
 }

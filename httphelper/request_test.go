@@ -16,7 +16,7 @@ import (
 func setupTestTracer() *trace.TracerProvider {
 	tp := trace.NewTracerProvider()
 	otel.SetTracerProvider(tp)
-	
+
 	// Set up propagator for header injection
 	otel.SetTextMapPropagator(
 		propagation.NewCompositeTextMapPropagator(
@@ -24,7 +24,7 @@ func setupTestTracer() *trace.TracerProvider {
 			propagation.Baggage{},
 		),
 	)
-	
+
 	return tp
 }
 
@@ -73,7 +73,7 @@ func TestHTTPDo(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				// Note: Headers might be set depending on tracer configuration
 				// We just verify the server receives the request correctly
-				
+
 				w.WriteHeader(tt.serverStatus)
 				w.Write([]byte("test response"))
 			}))
@@ -88,7 +88,7 @@ func TestHTTPDo(t *testing.T) {
 			tracer := otel.Tracer("test")
 			ctx, span := tracer.Start(ctx, "test-parent-span")
 			defer span.End()
-			
+
 			client := &http.Client{}
 
 			// Execute HTTPDo
@@ -121,7 +121,7 @@ func TestHTTPDo_TraceHeaderInjection(t *testing.T) {
 		if r.Header.Get("Traceparent") != "" {
 			traceHeaderFound = true
 		}
-		
+
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("test response"))
 	}))
@@ -136,7 +136,7 @@ func TestHTTPDo_TraceHeaderInjection(t *testing.T) {
 	tracer := otel.Tracer("test")
 	ctx, span := tracer.Start(ctx, "parent-span")
 	defer span.End()
-	
+
 	client := &http.Client{}
 
 	// Execute HTTPDo
@@ -162,7 +162,7 @@ func TestHTTPDo_NetworkError(t *testing.T) {
 	client := &http.Client{}
 
 	resp, err := HTTPDo(ctx, client, req, "NetworkErrorTest")
-	
+
 	// Network errors should return Go errors
 	assert.Error(t, err)
 	assert.Nil(t, resp)
@@ -191,7 +191,7 @@ func TestHTTPDo_ContextCancellation(t *testing.T) {
 	client := &http.Client{}
 
 	resp, err := HTTPDo(ctx, client, req, "CancelledRequest")
-	
+
 	// Should return context cancellation error
 	assert.Error(t, err)
 	assert.Nil(t, resp)
