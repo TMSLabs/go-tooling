@@ -67,6 +67,9 @@ func PublishMsg(ctx context.Context, nc *nats.Conn, msg *nats.Msg) error {
 	defer span.End()
 
 	// Inject trace context into headers
+	if msg.Header == nil {
+		msg.Header = nats.Header{}
+	}
 	otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(msg.Header))
 
 	return nc.PublishMsg(msg)
