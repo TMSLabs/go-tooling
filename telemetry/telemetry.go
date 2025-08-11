@@ -36,6 +36,7 @@ func initTelemetry(
 		opt(cfg)
 	}
 	cfg.ServiceName = serviceName
+	cfg.Environment = environment
 	TelemetryConfig = *cfg
 
 	// --- NATS init ---
