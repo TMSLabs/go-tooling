@@ -16,12 +16,35 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.20.0"
+	"go.opentelemetry.io/otel/trace"
 
 	"log/slog"
 )
 
 // TelemetryConfig is the configuration for telemetry.
 var TelemetryConfig = config{}
+
+// --- slog helpers ---
+type otelHandler struct {
+	slog.Handler
+}
+
+func newOTelHandler(base slog.Handler) *otelHandler {
+	return &otelHandler{Handler: base}
+}
+
+func (h *otelHandler) Handle(ctx context.Context, r slog.Record) error {
+	spanCtx := trace.SpanContextFromContext(ctx)
+	if spanCtx.HasTraceID() {
+		r.AddAttrs(
+			slog.String("trace_id", spanCtx.TraceID().String()),
+			slog.String("span_id", spanCtx.SpanID().String()),
+		)
+	}
+	return h.Handler.Handle(ctx, r)
+}
+
+// --- end ---
 
 // initTelemetry initializes slog, OpenTelemetry, and Sentry.
 // Returns the TracerProvider for shutdown.
@@ -62,7 +85,9 @@ func initTelemetry(
 		if cfg.SlogConfig.logLevel != slog.LevelInfo {
 			logLevel = cfg.SlogConfig.logLevel
 		}
-		logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel}))
+		baseHandler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel})
+		otelHandler := newOTelHandler(baseHandler)
+		logger := slog.New(otelHandler)
 		slog.SetDefault(logger)
 		slog.Info("slog initialized", "level", logLevel)
 	}
