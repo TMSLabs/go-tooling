@@ -18,14 +18,14 @@ func getNamespace() (string, error) {
 // GetEnvironment determines the environment based on the Kubernetes namespace.
 func GetEnvironment() string {
 	namespace, _ := getNamespace()
-	environment := "development"
-	if strings.Contains(namespace, "prod") {
+	environment := "local"
+	if strings.Contains(namespace, "dev") {
+		environment = "development"
+	} else if strings.Contains(namespace, "prod") {
 		environment = "production"
-	}
-	if strings.Contains(namespace, "test") {
+	} else if strings.Contains(namespace, "test") {
 		environment = "testing"
-	}
-	if strings.Contains(namespace, "staging") {
+	} else if strings.Contains(namespace, "staging") {
 		environment = "staging"
 	}
 	return environment
