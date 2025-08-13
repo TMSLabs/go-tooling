@@ -96,7 +96,7 @@ func main() {
 
     // Set up HTTP handler with tracing
     http.Handle("/hello", httphelper.HTTPHandler(helloHandler, "hello-endpoint"))
-    
+
     slog.Info("Server starting", "addr", ":8080")
     if err := http.ListenAndServe(":8080", nil); err != nil {
         slog.Error("server failed", "error", err)
@@ -133,7 +133,7 @@ shutdown, err := telemetry.Init("my-service", "production",
 defer shutdown()
 
 // Full setup with all integrations
-shutdown, err := telemetry.Init("my-service", "production",
+shutdown, err := telemetry.Init("my-service", k8shelper.GetEnvironment(),
     telemetry.WithSlog(telemetry.SlogLogLevel(slog.LevelDebug)),
     telemetry.WithSentry(telemetry.SentryDSN(os.Getenv("SENTRY_DSN"))),
     telemetry.WithTrace(telemetry.TraceExporterURL(os.Getenv("OTEL_EXPORTER_ENDPOINT"))),
@@ -145,13 +145,13 @@ defer shutdown()
 
 #### Configuration Options
 
-| Option | Purpose | Environment Variable |
-|--------|---------|---------------------|
-| `WithSlog()` | Enable structured logging | - |
-| `WithSentry()` | Enable error tracking | `SENTRY_DSN` |
-| `WithTrace()` | Enable distributed tracing | `OTEL_EXPORTER_ENDPOINT` |
-| `WithNATS()` | Enable NATS health checks | `NATS_SERVERS` |
-| `WithMySQL()` | Enable MySQL health checks | `MYSQL_DSN` |
+| Option         | Purpose                    | Environment Variable     |
+| -------------- | -------------------------- | ------------------------ |
+| `WithSlog()`   | Enable structured logging  | -                        |
+| `WithSentry()` | Enable error tracking      | `SENTRY_DSN`             |
+| `WithTrace()`  | Enable distributed tracing | `OTEL_EXPORTER_ENDPOINT` |
+| `WithNATS()`   | Enable NATS health checks  | `NATS_SERVERS`           |
+| `WithMySQL()`  | Enable MySQL health checks | `MYSQL_DSN`              |
 
 #### Error Capture
 
@@ -159,10 +159,10 @@ defer shutdown()
 import "github.com/TMSLabs/go-tooling/telemetry"
 
 // Capture errors with context
-telemetry.CaptureError(err, "Database connection failed")
+telemetry.CaptureError(ctx, err, "Database connection failed")
 
 // Capture with additional context
-telemetry.CaptureErrorWithContext(ctx, err, "Processing user request", map[string]interface{}{
+telemetry.CaptureError(ctx, err, "Processing user request", map[string]interface{}{
     "user_id": userID,
     "operation": "create_user",
 })
@@ -198,7 +198,7 @@ func handleUsers(ctx context.Context, w http.ResponseWriter, r *http.Request) {
     // Your handler logic with automatic tracing
     span := trace.SpanFromContext(ctx)
     span.AddEvent("processing user request")
-    
+
     // Handle the request...
     slog.InfoContext(ctx, "user request processed")
 }
@@ -254,7 +254,7 @@ if err := mysqlhelper.CheckConnection(dsn); err != nil {
 
 ```go
 // Initialize telemetry with MySQL health checks
-shutdown, err := telemetry.Init("my-service", "production",
+shutdown, err := telemetry.Init("my-service", k8shelper.GetEnvironment(),
     telemetry.WithSlog(),
     telemetry.WithMySQL(telemetry.MySQLDSN(dsn)),
 )
@@ -321,22 +321,23 @@ fmt.Printf("Current environment: %s\n", env)
 #### Environment Mapping
 
 | Namespace Contains | Detected Environment |
-|-------------------|---------------------|
-| `prod` | `production` |
-| `test` | `testing` |
-| `staging` | `staging` |
-| _other_ | `development` |
+| ------------------ | -------------------- |
+| `dev`              | `development`        |
+| `prod`             | `production`         |
+| `test`             | `testing`            |
+| `staging`          | `staging`            |
+| _other_            | `local`              |
 
 ## ⚙️ Configuration
 
 ### Environment Variables
 
-| Variable | Description | Required | Example |
-|----------|-------------|----------|---------|
-| `SENTRY_DSN` | Sentry project DSN for error tracking | No | `https://key@sentry.io/project` |
-| `OTEL_EXPORTER_ENDPOINT` | OpenTelemetry collector endpoint | No | `localhost:4317` |
-| `NATS_SERVERS` | NATS server URLs (comma-separated) | No | `nats://localhost:4222` |
-| `MYSQL_DSN` | MySQL connection string | No | `user:pass@tcp(host:port)/db` |
+| Variable                 | Description                           | Required | Example                         |
+| ------------------------ | ------------------------------------- | -------- | ------------------------------- |
+| `SENTRY_DSN`             | Sentry project DSN for error tracking | No       | `https://key@sentry.io/project` |
+| `OTEL_EXPORTER_ENDPOINT` | OpenTelemetry collector endpoint      | No       | `localhost:4317`                |
+| `NATS_SERVERS`           | NATS server URLs (comma-separated)    | No       | `nats://localhost:4222`         |
+| `MYSQL_DSN`              | MySQL connection string               | No       | `user:pass@tcp(host:port)/db`   |
 
 ### Configuration Example
 
@@ -349,7 +350,7 @@ OTEL_EXPORTER_ENDPOINT=localhost:4317
 NATS_SERVERS=nats://localhost:4222
 MYSQL_DSN=user:password@tcp(localhost:3306)/myapp?parseTime=true
 
-# Application Configuration  
+# Application Configuration
 APP_ENV=development
 APP_PORT=8080
 ```
@@ -364,7 +365,7 @@ func main() {
     if err := godotenv.Load(); err != nil {
         log.Println("No .env file found")
     }
-    
+
     // Initialize telemetry with environment variables
     shutdown, err := telemetry.Init("my-service", os.Getenv("APP_ENV"),
         telemetry.WithSlog(),
@@ -414,6 +415,7 @@ func main() {
     )
     if err != nil {
         slog.Error("telemetry initialization failed", "error", err)
+        telemetry.CaptureError(context.Background(), err, "telemetry init failed")
         os.Exit(1)
     }
     defer shutdown()
@@ -437,7 +439,7 @@ func main() {
     }
 
     slog.Info("server starting", "port", port, "environment", k8shelper.GetEnvironment())
-    
+
     server := &http.Server{
         Addr:         ":" + port,
         ReadTimeout:  30 * time.Second,
@@ -465,7 +467,7 @@ func handleUsers(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 
 func getUsers(ctx context.Context, w http.ResponseWriter, r *http.Request) {
     slog.InfoContext(ctx, "fetching users")
-    
+
     users := []map[string]interface{}{
         {"id": 1, "name": "John Doe", "email": "john@example.com"},
         {"id": 2, "name": "Jane Smith", "email": "jane@example.com"},
@@ -477,7 +479,7 @@ func getUsers(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 
 func createUser(ctx context.Context, w http.ResponseWriter, r *http.Request) {
     slog.InfoContext(ctx, "creating user")
-    
+
     var user map[string]interface{}
     if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
         telemetry.CaptureErrorWithContext(ctx, err, "Invalid JSON payload", nil)
@@ -492,7 +494,7 @@ func createUser(ctx context.Context, w http.ResponseWriter, r *http.Request) {
     w.Header().Set("Content-Type", "application/json")
     w.WriteStatus(http.StatusCreated)
     json.NewEncoder(w).Encode(user)
-    
+
     slog.InfoContext(ctx, "user created successfully", "user_id", user["id"])
 }
 ```
@@ -541,13 +543,13 @@ func main() {
     // Publish messages
     for i := 0; i < 10; i++ {
         message := fmt.Sprintf(`{"user_id": %d, "timestamp": "%s"}`, i+1, time.Now().Format(time.RFC3339))
-        
+
         if err := natshelper.NatsConn.Publish("user.created", []byte(message)); err != nil {
             slog.Error("failed to publish message", "error", err)
         } else {
             slog.Info("published message", "message", message)
         }
-        
+
         time.Sleep(time.Second)
     }
 
@@ -601,6 +603,7 @@ The test suite includes:
 ### Test Dependencies
 
 Tests use mocks and fakes to avoid dependencies on real external services:
+
 - No actual MySQL server required (connection failures are tested)
 - No actual NATS server required (connection failures are tested)
 - No actual Sentry or OpenTelemetry endpoints required
@@ -647,10 +650,11 @@ We welcome contributions to the TMSLabs Go Tooling project! Here's how you can h
    go mod download
    ```
 3. **Install development tools**:
+
    ```bash
    # Install golangci-lint for linting
    curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin
-   
+
    # Install gosec for security scanning
    go install github.com/securecode/gosec/v2/cmd/gosec@latest
    ```
@@ -747,7 +751,8 @@ Thank you for contributing to TMSLabs Go Tooling!
 
 **Problem**: Module import errors or "package not found" errors.
 
-**Solution**: 
+**Solution**:
+
 ```bash
 # Ensure you're using the correct import path
 go mod tidy
@@ -762,6 +767,7 @@ go version
 **Problem**: `telemetry.Init()` returns errors about missing configuration.
 
 **Solution**:
+
 ```go
 // Check that required environment variables are set
 if os.Getenv("SENTRY_DSN") == "" {
@@ -779,6 +785,7 @@ shutdown, err := telemetry.Init("my-service", "development",
 **Problem**: MySQL connection fails with "connection refused" or timeout errors.
 
 **Solution**:
+
 ```go
 // Test connection before using
 dsn := os.Getenv("MYSQL_DSN")
@@ -796,6 +803,7 @@ if err := mysqlhelper.CheckConnection(dsn); err != nil {
 **Problem**: NATS connection fails or messages aren't being delivered.
 
 **Solution**:
+
 ```go
 // Check NATS server availability
 natsURL := os.Getenv("NATS_SERVERS")
@@ -815,6 +823,7 @@ if err != nil {
 **Problem**: Traces not appearing in observability platforms.
 
 **Solution**:
+
 ```go
 // Verify exporter URL format
 exporterURL := os.Getenv("OTEL_EXPORTER_ENDPOINT")
@@ -833,6 +842,7 @@ span.AddEvent("debug checkpoint")
 **Problem**: Errors not appearing in Sentry dashboard.
 
 **Solution**:
+
 ```go
 // Verify DSN format
 // Should be: "https://key@sentry.io/project-id"
@@ -853,6 +863,7 @@ shutdown, err := telemetry.Init("my-service", "development", // Use correct envi
 **Problem**: Application using excessive memory.
 
 **Solution**:
+
 ```go
 // Reduce log level in production
 telemetry.WithSlog(telemetry.SlogLogLevel(slog.LevelWarn))
@@ -869,6 +880,7 @@ defer shutdown() // Always call shutdown function
 **Problem**: HTTP requests taking longer than expected.
 
 **Solution**:
+
 ```go
 // Add timeouts to HTTP clients
 client := &http.Client{
@@ -889,6 +901,7 @@ resp, err := httphelper.HTTPDo(ctx, client, req)
 **Problem**: Tests pass locally but fail in CI/CD.
 
 **Solution**:
+
 ```bash
 # Run tests with race detection locally
 go test -race ./...
@@ -905,6 +918,7 @@ go test -v ./...
 **Problem**: `golangci-lint` reports errors.
 
 **Solution**:
+
 ```bash
 # Run linter locally
 golangci-lint run
@@ -923,6 +937,7 @@ go mod tidy
 **Problem**: Application not working correctly in Kubernetes.
 
 **Solution**:
+
 ```yaml
 # Ensure environment variables are set in deployment
 apiVersion: apps/v1
@@ -931,18 +946,18 @@ spec:
   template:
     spec:
       containers:
-      - name: myapp
-        env:
-        - name: SENTRY_DSN
-          valueFrom:
-            secretKeyRef:
-              name: app-secrets
-              key: sentry-dsn
-        - name: MYSQL_DSN
-          valueFrom:
-            secretKeyRef:
-              name: app-secrets
-              key: mysql-dsn
+        - name: myapp
+          env:
+            - name: SENTRY_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: sentry-dsn
+            - name: MYSQL_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: mysql-dsn
 ```
 
 #### Docker Issues
@@ -950,6 +965,7 @@ spec:
 **Problem**: Application not working in Docker container.
 
 **Solution**:
+
 ```dockerfile
 # Use correct Go version in Dockerfile
 FROM golang:1.24-alpine
@@ -995,7 +1011,7 @@ If you're still experiencing issues:
 ### Related Projects
 
 - [OpenTelemetry](https://opentelemetry.io/) - Observability framework
-- [Sentry](https://sentry.io/) - Error tracking platform  
+- [Sentry](https://sentry.io/) - Error tracking platform
 - [NATS](https://nats.io/) - Message-oriented middleware
 - [Jaeger](https://www.jaegertracing.io/) - Distributed tracing platform
 - [Prometheus](https://prometheus.io/) - Monitoring and alerting
