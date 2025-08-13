@@ -12,6 +12,7 @@ import (
 	"github.com/nats-io/nats.go"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.20.0"
@@ -166,12 +167,12 @@ func initTelemetry(
 			),
 		)
 		otel.SetTracerProvider(tp)
-		// otel.SetTextMapPropagator(
-		// 	propagation.NewCompositeTextMapPropagator(
-		// 		propagation.TraceContext{},
-		// 		propagation.Baggage{},
-		// 	),
-		// )
+		otel.SetTextMapPropagator(
+			propagation.NewCompositeTextMapPropagator(
+				propagation.TraceContext{},
+				propagation.Baggage{},
+			),
+		)
 		slog.Info("OpenTelemetry initialized")
 		return tp, nil
 	}
