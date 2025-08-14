@@ -22,7 +22,7 @@ func HealthzEventChecker(nc *nats.Conn, serviceName string) {
 		LastHealthCheckEvent = time.Now().Format(time.RFC3339)
 	})
 	if err != nil {
-		fmt.Printf("Error subscribing to health check event: %v\n", err)
+		slog.Error("Error subscribing to health check event", "error", err)
 		return
 	}
 
@@ -30,7 +30,7 @@ func HealthzEventChecker(nc *nats.Conn, serviceName string) {
 		data := []byte("Health check event")
 		err := nc.Publish(serviceName+".healthz", data)
 		if err != nil {
-			fmt.Printf("Error publishing health check event: %v\n", err)
+			slog.Error("Error publishing health check event", "error", err)
 			return
 		}
 		time.Sleep(60 * time.Second)
@@ -75,9 +75,9 @@ func HealthzEndpointHandler(w http.ResponseWriter, _ *http.Request) {
 			return
 		}
 
-		fmt.Println(
-			"health|nats",
-			"last health check event received at",
+		slog.Debug(
+			"Health check event received",
+			"last_event",
 			LastHealthCheckEvent,
 		)
 	}
