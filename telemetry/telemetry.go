@@ -62,6 +62,17 @@ func initTelemetry(
 	cfg.Environment = environment
 	TelemetryConfig = *cfg
 
+	// --- slog init ---
+	logLevel := slog.LevelInfo
+	if cfg.SlogConfig.logLevel != slog.LevelInfo {
+		logLevel = cfg.SlogConfig.logLevel
+	}
+	baseHandler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel})
+	otelHandler := newOTelHandler(baseHandler)
+	logger := slog.New(otelHandler)
+	slog.SetDefault(logger)
+	slog.Info("slog initialized", "level", logLevel)
+
 	// --- NATS init ---
 	if cfg.NatsEnabled {
 		if cfg.NatsConfig.URL == "" {
@@ -77,19 +88,6 @@ func initTelemetry(
 
 		// Subscribe to health check Environment
 		go HealthzEventChecker(nc, serviceName)
-	}
-
-	// --- slog init ---
-	if cfg.SlogEnabled {
-		logLevel := slog.LevelInfo
-		if cfg.SlogConfig.logLevel != slog.LevelInfo {
-			logLevel = cfg.SlogConfig.logLevel
-		}
-		baseHandler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel})
-		otelHandler := newOTelHandler(baseHandler)
-		logger := slog.New(otelHandler)
-		slog.SetDefault(logger)
-		slog.Info("slog initialized", "level", logLevel)
 	}
 
 	// --- Sentry init ---
